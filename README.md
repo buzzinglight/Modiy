@@ -8,9 +8,10 @@ Modiy is an open-source hardware interface for modular synthesis
 ## From source code
 - Clone repository into the `plugins/` folder of VCV Rack source code (https://github.com/VCVRack) :
 
-`cd plugins`
-
-`git clone https://github.com/buzzinglight/Modiy.git`
+```
+cd plugins
+git clone https://github.com/buzzinglight/Modiy.git
+```
 
 - Build plugin (see https://github.com/VCVRack/Rack#building-plugins for help)
 
