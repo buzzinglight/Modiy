@@ -20,6 +20,15 @@ html, body, input, label, select {
 h1 {
 	text-align:				center;
 }
+h1.centered {
+	height:					calc(100vh - 2*30px);
+}
+h1.centered>img {
+	position: 				relative;
+	top: 					50%;
+	transform: 				translateY(-50%);
+}
+
 h2 {
 	font-size:				25px;
 	font-family: 			"revilo san";
