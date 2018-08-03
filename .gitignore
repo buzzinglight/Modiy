@@ -3,4 +3,6 @@
 Thumbs.db
 build/*
 *.dylib
+*.so
+*.dll
 res/Protocol Dispatcher.app/*
