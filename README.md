@@ -18,10 +18,14 @@ git clone https://github.com/buzzinglight/Modiy.git
 `make`
 
 ## For all versions
+### Protocol Distpacher
 - Copy *Protocol Distpacher* binary (https://github.com/buzzinglight/Protocol-Dispatcher/releases) into `Modiy/res/` folder
 - Launch *Protocol Dispatcher*
-- Launch *VCV Rack* with an instance of *Modiy* plugin on your rack
+### Arduino source code
+- From the webpage opened by *Protocol Dispatcher*, download *Arduino source code* at the bottom of the page and upload it into an Arduino Mega board.
+- After uploading, quit Arduino and open *Settings* page from the traybar icon of *Protocol Dispatcher* and select the corresponding Arduino serial port in the list
+### VCV Rack integration
+- Launch *VCV Rack* with an instance of *Modiy* plugin on your rack and refresh the webpage (you can launch it again in the menu of *Protocol Dispatcher* from the traybar icon)
 
-Then :
-- From the webpage opened by Protocol Dispatcher, download Arduino source code and upload it into an Arduino Mega board.
-- Open Settings page into Protocol Dispatcher and select the available Arduino Serial Port.
+## Wiring
+TODO
