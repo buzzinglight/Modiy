@@ -1,3 +1,6 @@
 *.DS_Store
 *.user
 Thumbs.db
+build/*
+*.dylib
+res/Protocol Dispatcher.app/*

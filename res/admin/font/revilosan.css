@@ -1,0 +1,8 @@
+@font-face {
+    font-family: 'revilo san';
+    src: url('revilosan.woff2') format('woff2'),
+        url('revilosan.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+

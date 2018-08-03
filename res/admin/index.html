@@ -1,0 +1,74 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta http-equiv="Content-type" content="text/html; charset=UTF-8">
+		<meta http-equiv="Content-Language" content="fr">
+	
+		<meta name="language" content="en">
+		<meta name="designer" content="Buzzing Light">
+		<link rel="icon" type="image/png" href="/icon.png" />  
+
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	
+		<title>Modiy</title>
+
+		<script language="javascript" type='text/javascript' src="js/moment.js"></script>
+		<script language="javascript" type='text/javascript' src="js/jquery.js"></script>
+		<script language="javascript" type='text/javascript' src="js/iannix.js"></script>
+		<script language="javascript" type='text/javascript' src="js/pixi.min.js"></script>
+		<script language="javascript" type='text/javascript' src="js/misc.js"></script>
+
+		<link href="css/reset.css" rel="stylesheet" type="text/css" />
+		<link href="font/opensans.css" rel="stylesheet" type="text/css" />
+		<link href="font/revilosan.css" rel="stylesheet" type="text/css" />
+		<link href="js/animate.css" rel="stylesheet" type="text/css" />
+
+		<script language="javascript" type='text/javascript' src="js/index.js"></script>
+		<link href="css/index.css" rel="stylesheet" type="text/css" />
+	</head>
+	<body>
+		<div id='container'>
+			<div class='dontPrint'>
+				<div id='pulses'>
+					<div id='pulse' class='red'></div>
+					<!--<div id='pulse' class='yellow'></div>-->
+				</div>
+				<h1><img draggable='false' src='img/logo_red.png' height='150'></h1>
+				<h2 class='noTopMargin'>Wiring diagram</h2>
+				<div id='canvasWaiting'>Waiting for VCV-Rack…</div>
+			</div>
+			<div id='canvas'></div><br/>
+			<div class='dontPrint button' id='print'>Print</div>
+			<h2>Part list</h2>
+			<table id='partList'>
+				<tr>
+					<td class='left' ><img src='img/icn_parts_arduino.png' height='35'></td>
+					<td class='right' id='nbBoards'>–</td>
+					<td class='left' ><img src='img/icn_parts_jack.png' height='32'></td>
+					<td class='right' id='nbJacks'>–</td>
+					<td class='left' ><img src='img/icn_parts_potentiometer.png' height='40'></td>
+					<td class='right' id='nbPotentiometers'>–</td>
+					<td class='left' ><img src='img/icn_parts_led.png' height='40'></td>
+					<td class='right' id='nbLEDs'>–</td>
+					<td class='left' ><img src='img/icn_parts_wire.png' height='30'></td>
+					<td class='right' id='nbWires'>–</td>
+				</tr>
+			</table>
+			
+			<div class='dontPrint'>
+				<h2>Arduino</h2>
+				<a href='files/Modiy-Arduino/Modiy-Arduino.ino' target='blank'><div class='button' id='download'>Download source code</div></a>
+			</div>
+		
+			<div class='dontPrint' style="opacity: 0; font-family: 'OpenSans'; font-weight: 200; line-height: 0px;">toto</div>
+			<div class='dontPrint' style="opacity: 0; font-family: 'OpenSans'; font-weight: 400; line-height: 0px;">toto</div>
+			<div class='dontPrint' style="opacity: 0; font-family: 'OpenSans'; font-weight: 600; line-height: 0px;">toto</div>
+			<div class='dontPrint' style="opacity: 0; font-family: 'OpenSans'; font-weight: 700; line-height: 0px;">toto</div>
+			<div class='dontPrint' style="opacity: 0; font-family: 'OpenSans'; font-weight: 900; line-height: 0px;">toto</div>
+		</div>
+	</body>
+</html>
+
+
