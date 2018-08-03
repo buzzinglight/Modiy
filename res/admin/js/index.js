@@ -13,7 +13,7 @@ $(document).ready(function() {
 		cache.resources = resources;
 		
 		//Sync with Arduino sketch (for pinouts)
-		$.ajax("files/Modiy-Arduino/Modiy-Arduino.ino").done(function(arduino) {
+		$.ajax("/arduino/Modiy/Modiy.ino").done(function(arduino) {
 			var arduinoCode = arduino.split("\n").clean("");
 			$.each(arduinoCode, function(index, codeLine) {
 				if((codeLine.indexOf("jackPinout[] = ") > 0) || (codeLine.indexOf("analogPinout[] = ") > 0) || (codeLine.indexOf("ledPinout[] = ") > 0)) {
