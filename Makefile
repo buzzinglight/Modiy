@@ -14,12 +14,8 @@ VERSION = 0.1.0
 
 # FLAGS will be passed to both the C and C++ compiler
 FLAGS += -Isrc/
-CFLAGS +=
-CXXFLAGS +=
-
-# Careful about linking to shared libraries, since you can't assume much about the user's environment and library search path.
-# Static libraries are fine.
-LDFLAGS += 
+#CFLAGS +=
+#CXXFLAGS +=
 
 # Add .cpp and .c files to the build
 SOURCES += $(wildcard src/*.cpp)
@@ -35,8 +31,8 @@ SOURCES += $(wildcard src/ip/posix/*.cpp)
 endif
 ifdef ARCH_WIN
 SOURCES += $(wildcard src/ip/win32/*.cpp)
+LDFLAGS += -lws2_32 -lwinmm
 endif
-
 
 # Add files to the ZIP package when running `make dist`
 # The compiled plugin is automatically added.
