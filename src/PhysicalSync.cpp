@@ -1,245 +1,4 @@
-#include "Modiy.hpp"
-#include <iostream>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
-#include <algorithm>
-
-//Audio
-#include <assert.h>
-#include <mutex>
-#include <chrono>
-#include <thread>
-#include <mutex>
-#include <condition_variable>
-#include "audio.hpp"
-#include "dsp/resampler.hpp"
-#include "dsp/ringbuffer.hpp"
-#define AUDIO_OUTPUTS 8
-#define AUDIO_INPUTS 8
-
-//Includes for OSC server
-#include <thread>
-#include "osc/OscReceivedElements.h"
-#include "osc/OscPacketListener.h"
-#include "osc/OscOutboundPacketStream.h"
-#include "ip/UdpSocket.h"
-
-//Websockets
-#ifdef WEBSOCKETS_INTERNAL
-#include "websockets/uWS.h"
-#endif
-
-//Structs needed for module caching
-struct LightWithWidget {
-    Light light;
-    MultiLightWidget *widget = NULL;
-};
-struct ModuleWithId {
-    ModuleWidget *widget = NULL;
-    std::vector<LightWithWidget> lights;
-    int moduleId = -1;
-};
-struct WireWithId {
-    WireWidget *widget = NULL;
-    int inputModuleId  = -1;
-    int outputModuleId = -1;
-};
-//Structs needed for audio
-struct AudioInterfaceIO : AudioIO {
-    std::mutex engineMutex;
-    std::condition_variable engineCv;
-    std::mutex audioMutex;
-    std::condition_variable audioCv;
-    // Audio thread produces, engine thread consumes
-    DoubleRingBuffer<Frame<AUDIO_INPUTS>, (1<<15)> inputBuffer;
-    // Audio thread consumes, engine thread produces
-    DoubleRingBuffer<Frame<AUDIO_OUTPUTS>, (1<<15)> outputBuffer;
-    bool active = false;
-
-    ~AudioInterfaceIO() {
-        // Close stream here before destructing AudioInterfaceIO, so the mutexes are still valid when waiting to close.
-        setDevice(-1, 0);
-    }
-
-    void processStream(const float *input, float *output, int frames) override {
-        // Reactivate idle stream
-        if (!active) {
-            active = true;
-            inputBuffer.clear();
-            outputBuffer.clear();
-        }
-
-        if (numInputs > 0) {
-            // TODO Do we need to wait on the input to be consumed here? Experimentally, it works fine if we don't.
-            for (int i = 0; i < frames; i++) {
-                if (inputBuffer.full())
-                    break;
-                Frame<AUDIO_INPUTS> inputFrame;
-                memset(&inputFrame, 0, sizeof(inputFrame));
-                memcpy(&inputFrame, &input[numInputs * i], numInputs * sizeof(float));
-                inputBuffer.push(inputFrame);
-            }
-        }
-
-        if (numOutputs > 0) {
-            std::unique_lock<std::mutex> lock(audioMutex);
-            auto cond = [&] {
-                return (outputBuffer.size() >= (size_t) frames);
-            };
-            auto timeout = std::chrono::milliseconds(100);
-            if (audioCv.wait_for(lock, timeout, cond)) {
-                // Consume audio block
-                for (int i = 0; i < frames; i++) {
-                    Frame<AUDIO_OUTPUTS> f = outputBuffer.shift();
-                    for (int j = 0; j < numOutputs; j++) {
-                        output[numOutputs*i + j] = clamp(f.samples[j], -1.f, 1.f);
-                    }
-                }
-            }
-            else {
-                // Timed out, fill output with zeros
-                memset(output, 0, frames * numOutputs * sizeof(float));
-                debug("Audio Interface IO underflow");
-            }
-        }
-
-        // Notify engine when finished processing
-        engineCv.notify_one();
-    }
-
-    void onCloseStream() override {
-        inputBuffer.clear();
-        outputBuffer.clear();
-    }
-
-    void onChannelsChange() override {
-    }
-};
-
-
-//Main class
-class OSCManagement;
-struct PhysicalSync : Module {
-    //VCV-Rack base functions
-    PhysicalSync();
-    ~PhysicalSync();
-    void step() override;
-    json_t *toJson() override;
-    void fromJson(json_t *rootJ) override;
-    void onReset() override;
-
-    //Interfaces
-    enum ParamIds {
-        NUM_PARAMS
-    };
-    enum InputIds {
-        ENUMS(AUDIO_INPUT, AUDIO_INPUTS),
-        NUM_INPUTS
-    };
-    enum OutputIds {
-        ENUMS(AUDIO_OUTPUT, AUDIO_OUTPUTS),
-        NUM_OUTPUTS
-    };
-    enum LightIds {
-        OSC_LIGHT_INT,
-        OSC_LIGHT_EXT,
-        NUM_LIGHTS
-    };
-
-    //Audio stuff
-    AudioInterfaceIO audioIO;
-    int lastSampleRate = 0;
-    int lastNumOutputs = -1;
-    int lastNumInputs  = -1;
-    SampleRateConverter<AUDIO_INPUTS>          inputSrc;
-    SampleRateConverter<AUDIO_OUTPUTS>         outputSrc;
-    DoubleRingBuffer<Frame<AUDIO_INPUTS>, 16>  inputBuffer;
-    DoubleRingBuffer<Frame<AUDIO_OUTPUTS>, 16> outputBuffer;
-
-
-    //Shared variables
-    float ledStatusIntPhase = 0.0, ledStatusExtPhase = 0.0, ledStatusIntPhaseOld = -1;
-
-    //OSC listener and sender
-    OSCManagement *osc = NULL;
-    void startOSCServer();
-    inline void logToOsc(std::string message);
-    MultiLightWidget *oscLightInt = NULL, *oscLightExt = NULL;
-
-    //Websockets
-    void startWebsocketsServer();
-
-    //Cache management
-    std::vector<ModuleWithId> modules;
-    std::vector<WireWithId> wires;
-    bool updateCacheNeeded = true;
-    void updateCache(bool force = false);
-
-    //Dump of data
-    void dumpLights    (const char *address);
-    void dumpModules   (const char *address);
-    void dumpParameters(const char *address);
-    void dumpJacks     (const char *address);
-
-    //Getters
-    Port*        getInputPort (unsigned int moduleId, unsigned int inputId);
-    Port*        getOutputPort(unsigned int moduleId, unsigned int outputId);
-    ParamWidget* getParameter (unsigned int moduleId, unsigned int paramId);
-    LightWithWidget getLight  (unsigned int moduleId, unsigned int lightId);
-    ModuleWithId    getModule (unsigned int moduleId);
-    WireWithId      getWire   (unsigned int inputModuleId, unsigned int inputPortId, unsigned int outputModuleId, unsigned int outputPortId);
-
-    //Setters
-    void setParameter(unsigned int moduleId, unsigned int paramId, float paramValue, bool isNormalized = false, bool additive = false);
-    void setConnection(unsigned int outputModuleId, unsigned int outputPortId, unsigned int inputModuleId, unsigned int inputPortId, bool active);
-    void clearConnection();
-    void resetParameter(unsigned int moduleId, unsigned int paramId);
-
-    //Absolute ID mapping to module (and reverse)
-    bool mapFromPotentiometer(unsigned int index, int *moduleId, int *paramId);
-    int  mapToPotentiometer(unsigned int moduleId, unsigned int paramId);
-    bool mapFromJack (unsigned int index, int *moduleId, int *inputOrOutputId, bool *isInput);
-    int  mapToJack(unsigned int moduleId, unsigned int inputOrOutputId, bool isInput);
-    int  mapToLED(unsigned int moduleId, unsigned int lightId);
-
-    // For more advanced Module features, read Rack's engine.hpp header file
-    // - toJson, fromJson: serialization of internal data
-    // - onSampleRateChange: event triggered by a change of sample rate
-    // - onReset, onRandomize, onCreate, onDelete: implements special behavior when user clicks these from the context menu
-};
-
-//Sort modules by geometric position (y then x)
-struct modulesWidgetGraphicalSort {
-    inline bool operator() (const ModuleWithId &module1, const ModuleWithId &module2) {
-        if(module1.widget->box.pos.y == module2.widget->box.pos.y)
-            return (module1.widget->box.pos.x < module2.widget->box.pos.x);
-        else
-            return (module1.widget->box.pos.y < module2.widget->box.pos.y);
-    }
-};
-
-//OSC Management
-class OSCManagement : public osc::OscPacketListener {
-public:
-    OSCManagement(PhysicalSync *_physicalSync);
-
-private:
-    char buffer[1024];
-    PhysicalSync *physicalSync;
-
-public:
-    void send(const char *address, std::string message);
-    void send(const char *address, int valueIndex, unsigned int moduleId, unsigned int valueId, const Vec &position, float valueAbsolute, float valueNormalized, int extraInfo = -9999);
-    void send(const char *address, unsigned int moduleId, std::string slug, std::string name, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbParameters, unsigned int nbLights);
-    void send(const char *address, float value);
-
-protected:
-    virtual void ProcessMessage(const osc::ReceivedMessage& m, const IpEndpointName& remoteEndpoint);
-    float asNumber(const osc::ReceivedMessage::const_iterator &arg) const;
-};
-
-
+#include "PhysicalSync.hpp"
 
 //Module initialisation
 PhysicalSync::PhysicalSync() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {
@@ -249,13 +8,11 @@ PhysicalSync::PhysicalSync() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_L
     info("OSC server thread creation…");
     std::thread oscThread(&PhysicalSync::startOSCServer, this);
     oscThread.detach();
-
-    info("Websockets server thread creation…");
-    std::thread websocketsThread(&PhysicalSync::startWebsocketsServer, this);
-    websocketsThread.detach();
 }
 PhysicalSync::~PhysicalSync() {
 }
+
+//(De)serialization
 json_t *PhysicalSync::toJson() {
     json_t *rootJ = json_object();
     json_object_set_new(rootJ, "audio", audioIO.toJson());
@@ -267,6 +24,7 @@ void PhysicalSync::fromJson(json_t *rootJ) {
     audioIO.fromJson(audioJ);
 }
 
+//Plugin reset
 void PhysicalSync::onReset() {
     audioIO.setDevice(-1, 0);
 }
@@ -378,148 +136,20 @@ void PhysicalSync::updateCache(bool force) {
 
 //Start OSC server
 void PhysicalSync::startOSCServer() {
-    int port = 57130;
-    info("Beginning of OSC server on port %d", port);
+    info("Beginning of OSC server on port %d", oscPort);
     try {
         osc = new OSCManagement(this);
-        UdpListeningReceiveSocket socket(IpEndpointName(IpEndpointName::ANY_ADDRESS, port), osc);
+        UdpListeningReceiveSocket socket(IpEndpointName(IpEndpointName::ANY_ADDRESS, oscPort), osc);
+        oscServerJustStart = true;
         socket.RunUntilSigInt();
-        info("End of OSC server on port ", port);
+        info("End of OSC server on port ", oscPort);
     }
     catch(std::exception e) {
         osc = NULL;
-        info("Impossible to bind OSC server on port %d", port);
+        info("Impossible to bind OSC server on port %d", oscPort);
     }
 }
-OSCManagement::OSCManagement(PhysicalSync *_physicalSync) {
-    physicalSync = _physicalSync;
-}
-//OSC message processing
-void OSCManagement::ProcessMessage(const osc::ReceivedMessage& m, const IpEndpointName& remoteEndpoint) {
-    try {
-        if(false) {
-            info("Reception OSC sur %s avec %d arguments", m.AddressPattern(), m.ArgumentCount());
-            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
-            for(int i = 0 ; i < m.ArgumentCount() ; i++)
-                info("\t%d = %f", i, asNumber(arg++));
-        }
-        //Parameters change
-        if( (((std::strcmp(m.AddressPattern(), "/parameter/set/absolute") == 0) || (std::strcmp(m.AddressPattern(), "/parameter/set/norm") == 0) || (std::strcmp(m.AddressPattern(), "/parameter/set/norm/10bits") == 0)) ||
-             ((std::strcmp(m.AddressPattern(), "/parameter/add/absolute") == 0) || (std::strcmp(m.AddressPattern(), "/parameter/add/norm") == 0) || (std::strcmp(m.AddressPattern(), "/parameter/set/norm/10bits") == 0)) || (std::strcmp(m.AddressPattern(), "/A") == 0)) && (m.ArgumentCount())) {
-            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
-            int moduleId = -1, paramId = -1;
-            float paramValue = -1;
-            if(m.ArgumentCount() == 3) {
-                moduleId   = asNumber(arg++);
-                paramId    = asNumber(arg++);
-                paramValue = asNumber(arg++);
-            }
-            else if(m.ArgumentCount() == 2) {
-                physicalSync->mapFromPotentiometer(asNumber(arg++), &moduleId, &paramId);
-                paramValue = asNumber(arg++);
-            }
-            if (std::strcmp(m.AddressPattern(), "/parameter/set/absolute") == 0)     physicalSync->setParameter(moduleId, paramId, paramValue);
-            if (std::strcmp(m.AddressPattern(), "/parameter/set/norm") == 0)         physicalSync->setParameter(moduleId, paramId, paramValue, true);
-            if((std::strcmp(m.AddressPattern(), "/parameter/set/norm/10bits") == 0) || (std::strcmp(m.AddressPattern(), "/A") == 0))  physicalSync->setParameter(moduleId, paramId, paramValue/1023., true);
-            if (std::strcmp(m.AddressPattern(), "/parameter/add/absolute") == 0)     physicalSync->setParameter(moduleId, paramId, paramValue, false, true);
-            if (std::strcmp(m.AddressPattern(), "/parameter/add/norm") == 0)         physicalSync->setParameter(moduleId, paramId, paramValue, true, true);
-            if (std::strcmp(m.AddressPattern(), "/parameter/add/norm/10bits") == 0)  physicalSync->setParameter(moduleId, paramId, paramValue/1023., true, true);
-        }
-        else if((std::strcmp(m.AddressPattern(), "/parameter/reset") == 0) && (m.ArgumentCount())) {
-            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
-            int moduleId = -1, paramId = -1;
-            if(m.ArgumentCount() == 2) {
-                moduleId   = asNumber(arg++);
-                paramId    = asNumber(arg++);
-            }
-            else if(m.ArgumentCount() == 1)
-                physicalSync->mapFromPotentiometer(asNumber(arg++), &moduleId, &paramId);
-            physicalSync->resetParameter(moduleId, paramId);
-        }
 
-        //Wires change
-        else if(((std::strcmp(m.AddressPattern(), "/link") == 0) || (std::strcmp(m.AddressPattern(), "/J") == 0)) && (m.ArgumentCount())) {
-            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
-            int outputModuleId = -1, outputId = -1, inputModuleId = -1, inputId = -1;
-            bool active = false;
-            if(m.ArgumentCount() == 5) {
-                outputModuleId = asNumber(arg++);
-                outputId       = asNumber(arg++);
-                inputModuleId  = asNumber(arg++);
-                inputId        = asNumber(arg++);
-                active         = asNumber(arg++);
-            }
-            else if(m.ArgumentCount() == 3) {
-                bool firstIsInput = false, secondIsInput = false;;
-                physicalSync->mapFromJack(asNumber(arg++), &outputModuleId, &outputId, &firstIsInput);
-                physicalSync->mapFromJack(asNumber(arg++), &inputModuleId,  &inputId,  &secondIsInput);
-                if((firstIsInput) && (!secondIsInput)) {
-                    info("Inversion des paramètres : output —> input");
-                    int outputModuleIdTmp = outputModuleId, outputIdTmp = outputId;
-                    outputModuleId = inputModuleId;     outputId = inputId;     firstIsInput  = !firstIsInput;
-                    inputModuleId  = outputModuleIdTmp; inputId  = outputIdTmp; secondIsInput = !secondIsInput;
-                }
-                active = asNumber(arg++);
-            }
-            physicalSync->setConnection(outputModuleId, outputId, inputModuleId, inputId, active);
-        }
-        else if(std::strcmp(m.AddressPattern(), "/link/clear") == 0)
-            physicalSync->clearConnection();
-
-        //Dump asked
-        else if(std::strcmp(m.AddressPattern(), "/dump/modules") == 0)
-            physicalSync->dumpModules(m.AddressPattern());
-        else if(std::strcmp(m.AddressPattern(), "/dump/leds") == 0)
-            physicalSync->dumpLights(m.AddressPattern());
-        else if(std::strcmp(m.AddressPattern(), "/dump/potentiometers") == 0)
-            physicalSync->dumpParameters(m.AddressPattern());
-        else if(std::strcmp(m.AddressPattern(), "/dump/jacks") == 0)
-            physicalSync->dumpJacks(m.AddressPattern());
-
-    } catch(osc::Exception &e) {
-        warn("Erreur %s / %s", m.AddressPattern(), e.what());
-    }
-}
-//Convert any number (int, float…) into float of convenience
-float OSCManagement::asNumber(const osc::ReceivedMessage::const_iterator &arg) const {
-    if     (arg->IsFloat())     return arg->AsFloat();
-    else if(arg->IsInt32())     return arg->AsInt32();
-    else if(arg->IsInt64())     return arg->AsInt64();
-    return -1;
-}
-
-//OSC send
-void OSCManagement::send(const char *address, std::string message) {
-    UdpTransmitSocket transmitSocket(IpEndpointName("127.0.0.1", 4001));
-    osc::OutboundPacketStream packet(buffer, 1024);
-
-    packet << osc::BeginMessage(address) << message.c_str() << osc::EndMessage;
-    transmitSocket.Send(packet.Data(), packet.Size());
-}
-void OSCManagement::send(const char *address, int valueIndex, unsigned int moduleId, unsigned int valueId, const Vec &position, float valueAbsolute, float valueNormalized, int extraInfo) {
-    UdpTransmitSocket transmitSocket(IpEndpointName("127.0.0.1", 4001));
-    osc::OutboundPacketStream packet(buffer, 1024);
-
-    packet << osc::BeginMessage(address) << valueIndex << (int)moduleId << (int)valueId << position.x << position.y << valueAbsolute << valueNormalized;
-    if(extraInfo != -9999)
-        packet << extraInfo;
-    packet << osc::EndMessage;
-    transmitSocket.Send(packet.Data(), packet.Size());
-}
-void OSCManagement::send(const char *address, unsigned int moduleId, std::string slug, std::string name, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbParameters, unsigned int nbLights) {
-    UdpTransmitSocket transmitSocket(IpEndpointName("127.0.0.1", 4001));
-    osc::OutboundPacketStream packet(buffer, 1024);
-
-    packet << osc::BeginMessage(address) << (int)moduleId << slug.c_str() << name.c_str() << position.x << position.y << size.x << size.y  << (int)nbInputs << (int)nbOutputs << (int)nbParameters << (int)nbLights << osc::EndMessage;
-    transmitSocket.Send(packet.Data(), packet.Size());
-}
-void OSCManagement::send(const char *address, float value) {
-    UdpTransmitSocket transmitSocket(IpEndpointName("127.0.0.1", 4001));
-    osc::OutboundPacketStream packet(buffer, 1024);
-
-    packet << osc::BeginMessage(address) << value << osc::EndMessage;
-    transmitSocket.Send(packet.Data(), packet.Size());
-}
 //Log in console + through OSC
 void PhysicalSync::logToOsc(std::string message) {
     if(osc)
@@ -528,54 +158,65 @@ void PhysicalSync::logToOsc(std::string message) {
 }
 
 
-//Start Websocket server
-void PhysicalSync::startWebsocketsServer() {
-#ifdef WEBSOCKETS_INTERNAL
-    int port = 9002;
-    info("Starting of Websockets server on port %d", port);
 
-    uWS::Hub h;
-    h.onMessage([](uWS::WebSocket<uWS::SERVER> *ws, char *message_char, size_t length, uWS::OpCode opCode) {
-        std::string message = std::string(message_char, length);
-        info("Réception de %s (%d / %d)", message.c_str(), length, opCode);
-        //ws->send(message, length, opCode);
-    });
-
-    if (h.listen(port)) {
-        h.run();
-        info("End of Websockets server on port ", port);
-    }
-    else
-        info("Impossible to bind Websockets server on port %d", port);
-#endif
-}
-
-
-
-
-//Time is running in VCV Rack…
+//Audio step
 void PhysicalSync::step() {
     float deltaTime = engineGetSampleTime();
 
-    //Data sync
+    //Cache can be updated
     updateCacheNeeded = true;
-    if(osc) {
-        ledStatusIntPhase += deltaTime;
-        if (ledStatusIntPhase >= 1)
-            ledStatusIntPhase = 0;
-        lights[OSC_LIGHT_INT].value = (ledStatusIntPhase > 0.5)?(1):(0);
-        if(ledStatusIntPhaseOld != lights[OSC_LIGHT_INT].value) {
-            ledStatusIntPhaseOld = lights[OSC_LIGHT_INT].value;
-                osc->send("/pulse", ledStatusIntPhaseOld);
+
+    //End of startup, after OSC creation, one time only
+    if((osc) && (oscServerJustStart)) {
+        oscServerJustStart = false;
+        isProtocolDispatcherFound = false;
+
+        //Current directory and Protocol Dispatcher path
+        std::string protocolDispatcher;
+        #ifdef ARCH_MAC
+        protocolDispatcher = assetPlugin(plugin, "res/Protocol Dispatcher.app/Contents/MacOS/Protocol Dispatcher");
+        #endif
+        #ifdef ARCH_WIN
+        protocolDispatcher = assetPlugin(plugin, "res/ProtocolDispatcher.exe");
+        #endif
+        #ifdef ARCH_LIN
+        protocolDispatcher = assetPlugin(plugin, "res/ProtocolDispatcher");
+        #endif
+        info("Checks if Protocol Dispatcher is present at %s", protocolDispatcher.c_str());
+        if(FILE *file = fopen(protocolDispatcher.c_str(), "r")) {
+            //Protocol Dispatcher is OK
+            fclose(file);
+            isProtocolDispatcherFound = true;
         }
+    }
+
+    //Only if Modiy as an OSC server
+    if(osc) {
+        //Ping status
+        if(pingLED.blink(deltaTime))
+            osc->send("/ping", oscPort);
+
+        //LED status
+        float ledStatusIntDelta = deltaTime * 2;
+        if(!isProtocolDispatcherFound)
+            ledStatusIntDelta = -1;
+        else if(!isProtocolDispatcherTalking)
+            ledStatusIntDelta = deltaTime / 4;
+        if(ledStatusInt.blink(ledStatusIntDelta)) {
+            osc->send("/pulse", ledStatusInt.valueRounded);
+            isProtocolDispatcherTalking = false;
+        }
+        lights[OSC_LIGHT_INT].value = ledStatusInt.valueRounded;
+
+
+        //LED visibility
         if((oscLightInt) && (oscLightInt->visible == false))
             oscLightInt->visible = true;
         if((oscLightExt) && (oscLightExt->visible == false))
             oscLightExt->visible = true;
-
     }
 
-    // Update SRC states
+    //Audio
     int sampleRate = (int)engineGetSampleRate();
     inputSrc .setRates(audioIO.sampleRate, sampleRate);
     outputSrc.setRates(sampleRate, audioIO.sampleRate);
@@ -609,27 +250,22 @@ void PhysicalSync::step() {
 
     // Take input from buffer
     Frame<AUDIO_INPUTS> inputFrame;
-    if (!inputBuffer.empty()) {
+    if (!inputBuffer.empty())
         inputFrame = inputBuffer.shift();
-    }
-    else {
+    else
         memset(&inputFrame, 0, sizeof(inputFrame));
-    }
-    for (int i = 0; i < audioIO.numInputs; i++) {
+    for (int i = 0; i < audioIO.numInputs; i++)
         outputs[AUDIO_OUTPUT + i].value = 10.f * inputFrame.samples[i];
-    }
-    for (int i = audioIO.numInputs; i < AUDIO_INPUTS; i++) {
+    for (int i = audioIO.numInputs; i < AUDIO_INPUTS; i++)
         outputs[AUDIO_OUTPUT + i].value = 0.f;
-    }
 
     // Outputs: rack engine -> audio engine
     if (audioIO.active && audioIO.numOutputs > 0) {
         // Get and push output SRC frame
         if (!outputBuffer.full()) {
             Frame<AUDIO_OUTPUTS> outputFrame;
-            for (int i = 0; i < AUDIO_OUTPUTS; i++) {
+            for (int i = 0; i < AUDIO_OUTPUTS; i++)
                 outputFrame.samples[i] = inputs[AUDIO_INPUT + i].value / 10.f;
-            }
             outputBuffer.push(outputFrame);
         }
 
@@ -661,6 +297,7 @@ void PhysicalSync::step() {
         audioIO.audioCv.notify_one();
     }
 }
+
 
 //Getters
 ParamWidget* PhysicalSync::getParameter(unsigned int moduleId, unsigned int paramId) {
@@ -1004,14 +641,13 @@ void PhysicalSync::dumpModules(const char *address) {
         osc->send(address, "end");
     }
 }
-
+void PhysicalSync::pongReceived() {
+    isProtocolDispatcherTalking = true;
+}
 
 
 
 //Module widget
-struct PhysicalSyncWidget : ModuleWidget {
-    PhysicalSyncWidget(PhysicalSync *module);
-};
 PhysicalSyncWidget::PhysicalSyncWidget(PhysicalSync *module) : ModuleWidget(module) {
     setPanel(SVG::load(assetPlugin(plugin, "res/PhysicalSync.svg")));
     SVGWidget *component;
@@ -1079,10 +715,53 @@ PhysicalSyncWidget::PhysicalSyncWidget(PhysicalSync *module) : ModuleWidget(modu
     addChild(audioWidget);
 }
 
+//Additional menus
+void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
+    menu->addChild(MenuEntry::create());
+
+    PhysicalSync *physicalSync = dynamic_cast<PhysicalSync*>(module);
+    assert(physicalSync);
+
+    //Settings page
+    PhysicalSyncMenu *pd_openSettings = MenuItem::create<PhysicalSyncMenu>("Serial port settings");
+    pd_openSettings->module = physicalSync;
+    pd_openSettings->oscMessage = "/protocoldispatcher/opensettings";
+    menu->addChild(pd_openSettings);
+
+    //Network page
+    PhysicalSyncMenu *pd_openNetwork = MenuItem::create<PhysicalSyncMenu>("Network system settings");
+    pd_openNetwork->module = physicalSync;
+    pd_openNetwork->oscMessage = "/protocoldispatcher/opennetwork";
+    menu->addChild(pd_openNetwork);
+
+    //Webpage page
+    PhysicalSyncMenu *pd_openWebpage = MenuItem::create<PhysicalSyncMenu>("Open webpage");
+    pd_openWebpage->module = physicalSync;
+    pd_openWebpage->oscMessage = "/protocoldispatcher/openwebpage";
+    menu->addChild(pd_openWebpage);
+}
+
+
+
+
+//LED blinking variables
+bool LEDvars::blink(float deltaTime) {
+    if(deltaTime >= 0)
+        value += deltaTime;
+    else
+        value = -deltaTime;
+    if (value > 1)
+        value = 0;
+    valueRounded = (value > 0.5)?(1):(0);
+    if(valueRoundedOld != valueRounded) {
+        valueRoundedOld = valueRounded;
+        return true;
+    }
+    return false;
+}
 
 // Specify the Module and ModuleWidget subclass, human-readable
 // author name for categorization per plugin, module slug (should never
 // change), human-readable module name, and any number of tags
 // (found in `include/tags.hpp`) separated by commas.
 Model *physicalSync = Model::create<PhysicalSync, PhysicalSyncWidget>("Modiy", "ModiySync", "Physical Sync", UTILITY_TAG);
-

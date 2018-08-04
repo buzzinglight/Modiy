@@ -1,9 +1,10 @@
 #include "rack.hpp"
 
+//Namespaces
 using namespace rack;
 
-// Forward-declare the Plugin, defined in Modiy.cpp
+//Forward-declare the Plugin, defined in Modiy.cpp
 extern Plugin *plugin;
 
-// Forward-declare each Model, defined in each module source file
+//Forward-declare each Model, defined in each module source file
 extern Model *physicalSync;
