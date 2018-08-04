@@ -21,16 +21,21 @@ FLAGS += -Isrc/
 SOURCES += $(wildcard src/*.cpp)
 # OSC
 SOURCES += $(wildcard src/ip/*.cpp) $(wildcard src/osc/*.cpp)
+# Process
+SOURCES += $(wildcard src/process/process.cpp)
 
 # Arch specitic files
 ifdef ARCH_LIN
 SOURCES += $(wildcard src/ip/posix/*.cpp)
+SOURCES += $(wildcard src/process/process_unix.cpp)
 endif
 ifdef ARCH_MAC
 SOURCES += $(wildcard src/ip/posix/*.cpp)
+SOURCES += $(wildcard src/process/process_unix.cpp)
 endif
 ifdef ARCH_WIN
 SOURCES += $(wildcard src/ip/win32/*.cpp)
+SOURCES += $(wildcard src/process/process_win.cpp)
 LDFLAGS += -lws2_32 -lwinmm
 endif
 

@@ -172,18 +172,17 @@ void PhysicalSync::step() {
         isProtocolDispatcherFound = false;
 
         //Current directory and Protocol Dispatcher path
-        std::string protocolDispatcher;
         #ifdef ARCH_MAC
-        protocolDispatcher = assetPlugin(plugin, "res/Protocol Dispatcher.app/Contents/MacOS/Protocol Dispatcher");
+        protocolDispatcherPath = assetPlugin(plugin, "res/Protocol Dispatcher.app/Contents/MacOS/Protocol Dispatcher");
         #endif
         #ifdef ARCH_WIN
-        protocolDispatcher = assetPlugin(plugin, "res/ProtocolDispatcher.exe");
+        protocolDispatcherPath = assetPlugin(plugin, "res/ProtocolDispatcher.exe");
         #endif
         #ifdef ARCH_LIN
-        protocolDispatcher = assetPlugin(plugin, "res/ProtocolDispatcher");
+        protocolDispatcherPath = assetPlugin(plugin, "res/ProtocolDispatcher");
         #endif
-        info("Checks if Protocol Dispatcher is present at %s", protocolDispatcher.c_str());
-        if(FILE *file = fopen(protocolDispatcher.c_str(), "r")) {
+        info("Checks if protocol dispatcher app is present at %s", protocolDispatcherPath.c_str());
+        if(FILE *file = fopen(protocolDispatcherPath.c_str(), "r")) {
             //Protocol Dispatcher is OK
             fclose(file);
             isProtocolDispatcherFound = true;
@@ -204,7 +203,20 @@ void PhysicalSync::step() {
             ledStatusIntDelta = deltaTime / 4;
         if(ledStatusInt.blink(ledStatusIntDelta)) {
             osc->send("/pulse", ledStatusInt.valueRounded);
-            isProtocolDispatcherTalking = false;
+
+            //Opens Procotol Dispatcher if needed
+            if(isProtocolDispatcherFound) {
+                if(!isProtocolDispatcherTalking)
+                    isProtocolDispatcherTalkingCounter++;
+                isProtocolDispatcherTalking = false;
+
+                if(isProtocolDispatcherTalkingCounter > 3) {
+                    isProtocolDispatcherTalkingCounter = -5;
+                    info("Trying to start protocol dispatcher app %s…", protocolDispatcherPath.c_str());
+
+                    TinyProcessLib::Process process("\"" + protocolDispatcherPath + "\"");
+                }
+            }
         }
         lights[OSC_LIGHT_INT].value = ledStatusInt.valueRounded;
 
@@ -643,6 +655,7 @@ void PhysicalSync::dumpModules(const char *address) {
 }
 void PhysicalSync::pongReceived() {
     isProtocolDispatcherTalking = true;
+    isProtocolDispatcherTalkingCounter = 0;
 }
 
 

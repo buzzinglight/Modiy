@@ -6,6 +6,9 @@
 #include "OSCManagement.hpp"
 #include "Modiy.hpp"
 
+//Process
+#include "process/process.hpp"
+
 //Divers
 #include <iostream>
 #include <fstream>
@@ -97,7 +100,9 @@ private:
     //LED variables
     float ledStatusExtPhase;
     LEDvars ledStatusInt, pingLED;
+    std::string protocolDispatcherPath;
     bool isProtocolDispatcherFound = false, isProtocolDispatcherTalking = false;
+    int isProtocolDispatcherTalkingCounter = 0;
 
     //OSC listener and sender
     bool oscServerJustStart = false;
