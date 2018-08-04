@@ -11,12 +11,14 @@ Modiy is an open-source hardware interface for modular synthesis
 ```
 cd plugins
 git clone https://github.com/buzzinglight/Modiy.git
-cd Modiy
 ```
 
 - Build plugin (see https://github.com/VCVRack/Rack#building-plugins for help)
 
-`make`
+```
+cd Modiy
+make
+```
 
 ## For all versions
 ### Protocol Distpacher
