@@ -86,12 +86,14 @@ void OSCManagement::ProcessMessage(const osc::ReceivedMessage& m, const IpEndpoi
         //Dump asked
         else if(std::strcmp(m.AddressPattern(), "/dump/modules") == 0)
             oscRemote->dumpModules(m.AddressPattern());
-        else if(std::strcmp(m.AddressPattern(), "/dump/leds") == 0)
-            oscRemote->dumpLights(m.AddressPattern());
         else if(std::strcmp(m.AddressPattern(), "/dump/potentiometers") == 0)
             oscRemote->dumpParameters(m.AddressPattern());
         else if(std::strcmp(m.AddressPattern(), "/dump/jacks") == 0)
             oscRemote->dumpJacks(m.AddressPattern());
+        else if(std::strcmp(m.AddressPattern(), "/dump/leds") == 0)
+            oscRemote->dumpLights(m.AddressPattern());
+        else if(std::strcmp(m.AddressPattern(), "/L") == 0)
+            oscRemote->dumpLights("/serial", true);
 
     } catch(osc::Exception &e) {
         warn("Erreur %s / %s", m.AddressPattern(), e.what());

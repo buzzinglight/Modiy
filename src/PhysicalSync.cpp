@@ -187,11 +187,17 @@ void PhysicalSync::step() {
             fclose(file);
             isProtocolDispatcherFound = true;
         }
+
+        //LED visibility
+        if((oscLightInt) && (oscLightInt->visible == false))
+            oscLightInt->visible = true;
+        if((oscLightExt) && (oscLightExt->visible == false))
+            oscLightExt->visible = true;
     }
 
     //Only if Modiy as an OSC server
     if(osc) {
-        //Ping status
+        //Ping fake LED
         if(pingLED.blink(deltaTime))
             osc->send("/ping", oscPort);
 
@@ -219,13 +225,6 @@ void PhysicalSync::step() {
             }
         }
         lights[OSC_LIGHT_INT].value = ledStatusInt.valueRounded;
-
-
-        //LED visibility
-        if((oscLightInt) && (oscLightInt->visible == false))
-            oscLightInt->visible = true;
-        if((oscLightExt) && (oscLightExt->visible == false))
-            oscLightExt->visible = true;
     }
 
     //Audio
@@ -579,23 +578,33 @@ void PhysicalSync::clearConnection() {
 
 
 //Dump
-void PhysicalSync::dumpLights(const char *address) {
-    ledStatusExtPhase = 1 - ledStatusExtPhase;
-    lights[OSC_LIGHT_EXT].value = ledStatusExtPhase;
+void PhysicalSync::dumpLights(const char *address, bool inLine) {
+    lights[OSC_LIGHT_EXT].value = 1-lights[OSC_LIGHT_EXT].value;
     if(osc) {
+        std::string inLineString;
         updateCache();
-        osc->send(address, "start");
+        if(!inLine)
+            osc->send(address, "start");
         for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
             ModuleWithId module = getModule(moduleId);
             if(module.widget) {
                 for(unsigned int lightId = 0 ; lightId < module.lights.size() ; lightId++) {
                     LightWithWidget lightWithWidget = getLight(moduleId, lightId);
-                    if(lightWithWidget.widget)
-                        osc->send(address, mapToLED(moduleId, lightId), moduleId, lightId, lightWithWidget.widget->box.getCenter(), lightWithWidget.light.getBrightness(), lightWithWidget.light.value);
+                    if(lightWithWidget.widget) {
+                        if(inLine)
+                            inLineString += " " + std::to_string((int)(255 * lightWithWidget.light.value));
+                        else
+                            osc->send(address, mapToLED(moduleId, lightId), moduleId, lightId, lightWithWidget.widget->box.getCenter(), lightWithWidget.light.getBrightness(), lightWithWidget.light.value);
+                    }
                 }
             }
         }
-        osc->send(address, "end");
+        if(!inLine)
+            osc->send(address, "end");
+        else {
+            inLineString = "L" + inLineString;
+            osc->send(address, inLineString);
+        }
     }
 }
 void PhysicalSync::dumpParameters(const char *address) {
@@ -652,6 +661,10 @@ void PhysicalSync::dumpModules(const char *address) {
         }
         osc->send(address, "end");
     }
+}
+void PhysicalSync::send(const char *message) {
+    if(osc)
+        osc->send(message);
 }
 void PhysicalSync::pongReceived() {
     isProtocolDispatcherTalking = true;
@@ -728,44 +741,51 @@ PhysicalSyncWidget::PhysicalSyncWidget(PhysicalSync *module) : ModuleWidget(modu
     addChild(audioWidget);
 }
 
-//Additional menus
+//Additional menu
 void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
-    menu->addChild(MenuEntry::create());
-
     PhysicalSync *physicalSync = dynamic_cast<PhysicalSync*>(module);
     assert(physicalSync);
 
-    //Settings page
-    PhysicalSyncMenu *pd_openSettings = MenuItem::create<PhysicalSyncMenu>("Serial port settings");
-    pd_openSettings->module = physicalSync;
-    pd_openSettings->oscMessage = "/protocoldispatcher/opensettings";
-    menu->addChild(pd_openSettings);
+    if(physicalSync->osc) {
+        menu->addChild(MenuEntry::create());
 
-    //Network page
-    PhysicalSyncMenu *pd_openNetwork = MenuItem::create<PhysicalSyncMenu>("Network system settings");
-    pd_openNetwork->module = physicalSync;
-    pd_openNetwork->oscMessage = "/protocoldispatcher/opennetwork";
-    menu->addChild(pd_openNetwork);
+        //Settings page
+        PhysicalSyncMenu *pd_openSettings = MenuItem::create<PhysicalSyncMenu>("Serial port settings");
+        pd_openSettings->oscRemote = physicalSync;
+        pd_openSettings->oscMessage = "/protocoldispatcher/opensettings";
+        menu->addChild(pd_openSettings);
 
-    //Webpage page
-    PhysicalSyncMenu *pd_openWebpage = MenuItem::create<PhysicalSyncMenu>("Open webpage");
-    pd_openWebpage->module = physicalSync;
-    pd_openWebpage->oscMessage = "/protocoldispatcher/openwebpage";
-    menu->addChild(pd_openWebpage);
+        //Network page
+        PhysicalSyncMenu *pd_openNetwork = MenuItem::create<PhysicalSyncMenu>("Network system settings");
+        pd_openNetwork->oscRemote = physicalSync;
+        pd_openNetwork->oscMessage = "/protocoldispatcher/opennetwork";
+        menu->addChild(pd_openNetwork);
+
+        //Webpage page
+        PhysicalSyncMenu *pd_openWebpage = MenuItem::create<PhysicalSyncMenu>("Open webpage");
+        pd_openWebpage->oscRemote = physicalSync;
+        pd_openWebpage->oscMessage = "/protocoldispatcher/openwebpage";
+        menu->addChild(pd_openWebpage);
+    }
 }
 
 
+//Menu item
+void PhysicalSyncMenu::onAction(EventAction &) {
+    if(oscRemote)
+        oscRemote->send(oscMessage);
+}
 
 
 //LED blinking variables
-bool LEDvars::blink(float deltaTime) {
+bool LEDvars::blink(float deltaTime, float threshold) {
     if(deltaTime >= 0)
         value += deltaTime;
     else
         value = -deltaTime;
-    if (value > 1)
+    if (value > (2*threshold))
         value = 0;
-    valueRounded = (value > 0.5)?(1):(0);
+    valueRounded = (value > threshold)?(1):(0);
     if(valueRoundedOld != valueRounded) {
         valueRoundedOld = valueRounded;
         return true;
@@ -777,4 +797,4 @@ bool LEDvars::blink(float deltaTime) {
 // author name for categorization per plugin, module slug (should never
 // change), human-readable module name, and any number of tags
 // (found in `include/tags.hpp`) separated by commas.
-Model *physicalSync = Model::create<PhysicalSync, PhysicalSyncWidget>("Modiy", "ModiySync", "Physical Sync", UTILITY_TAG);
+Model *physicalSync = Model::create<PhysicalSync, PhysicalSyncWidget>("Modiy", "ModiySync", "Physical Sync", UTILITY_TAG,EXTERNAL_TAG);

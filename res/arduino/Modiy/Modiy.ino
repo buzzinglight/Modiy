@@ -8,27 +8,43 @@ struct JAL {
 };
 JAL jal;
 
+
 //Intercommunication betweend cards
 const uint8_t comPinout[] = {18, 19}; // TX / RX
 uint8_t cycle = 1, cycleCheck = 0;
 bool firstLoop = true;
 
+
 //Wires = Jacks (digital)
 const uint8_t jackPinout[] = {14, 15, 16, 17, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 47, 48, 49, 50, 51, 52, 53};
 uint8_t ***jackValues;
 
+
 //Potentiometers = Analog
 const uint8_t analogPinout[] = {A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15};
 uint16_t **analogValues;
+struct RunningAverage {
+  uint8_t powerOfTwo = 4; //Only edit this line —> 2^4 = 16 values
+
+  uint16_t **values;
+  uint8_t number = 0;
+  uint8_t index = 0;
+};
+RunningAverage ra;
+
 
 //PWM = LEDs
 const uint8_t ledPinout[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 44, 45, 46};
+//LED refresh counter
+int lastLEDAsk = 0;
+
 
 //Serial port
 #define serialInputDataIndexMax  16*5
 String serialInput[2][serialInputDataIndexMax];
 int8_t serialInputDataIndex[2] = { -1, -1};
 bool isDumping = false;
+
 
 //Start of sketch
 void setup() {
@@ -41,6 +57,7 @@ void setup() {
   jal.count[jal.Jack]   = sizeof(jackPinout);
   jal.count[jal.Analog] = sizeof(analogPinout);
   jal.count[jal.LED]    = sizeof(ledPinout);
+  ra.number = 1 << ra.powerOfTwo;
   Serial.print("JAL_O ");
   Serial.print(jal.offset[jal.Jack]);
   Serial.print(" ");
@@ -55,8 +72,17 @@ void setup() {
   Serial.println(jal.count[jal.LED]);
   Serial.print("Serial Buffer\t");
   Serial.println(SERIAL_RX_BUFFER_SIZE);
+  Serial.print("Running average\t");
+  Serial.println(ra.number);
 
   alloc();
+
+  //LED refresh counter
+  lastLEDAsk = millis();
+
+  //Analog running average fill
+  for (uint8_t raIndex = 0 ; raIndex < ra.number ; raIndex++)
+    processAnalog(false);
 }
 
 void loop() {
@@ -68,10 +94,16 @@ void loop() {
     Serial.println("DUMP_START");
   if (!isDumping) {
     processJack();
-    processAnalog();
+    processAnalog(true);
   }
   if (firstLoop)
     Serial.println("DUMP_END");
+
+  //LED refresh ask each 50ms
+  if ((millis() - lastLEDAsk) > 50) {
+    lastLEDAsk = millis();
+    Serial.println("L");
+  }
 
   //Comparaison n/n-1
   cycle = cycleCheck;
@@ -106,6 +138,14 @@ void alloc() {
     analogValues[cycle] = new uint16_t[jal.count[jal.Analog]];
     for (uint8_t analog = 0 ; analog < jal.count[jal.Analog] ; analog++)
       analogValues[cycle][analog] = 0;
+  }
+
+  //Initialize analog running average
+  ra.values = new uint16_t*[jal.count[jal.Analog]];
+  for (uint8_t analog = 0 ; analog < jal.count[jal.Analog] ; analog++) {
+    ra.values[analog] = new uint16_t[ra.number];
+    for (uint8_t raIndex = 0 ; raIndex < ra.number ; raIndex++)
+      ra.values[analog][raIndex] = 0;
   }
 
   //Configure digital pins with internal pull up
@@ -148,17 +188,29 @@ void processJack() {
 }
 
 //Read all analog values
-void processAnalog() {
+void processAnalog(bool doSend) {
+  //Shift running average value
+  ra.index = (ra.index + 1) % ra.number;
+  uint16_t total = 0;
+
   //Browse all analog inputs
   for (uint8_t analog = 0 ; analog < jal.count[jal.Analog] ; analog++) {
     //Read value
-    analogValues[cycle][analog] = analogRead(analogPinout[analog]);
+    ra.values[analog][ra.index] = analogRead(analogPinout[analog]);
 
-    //Send on serial port on change
-    if (analogValues[cycleCheck][analog] != analogValues[cycle][analog])
-      //And only if it's not pull-up noise
-      if ((false) || (analogValues[cycleCheck][analog] < 1021) || (analogValues[cycle][analog] < 1021))
+    //Total of values
+    total = 0;
+    for (uint8_t raIndex = 0 ; raIndex < ra.number ; raIndex++)
+      total += ra.values[analog][raIndex];
+
+    if (doSend) {
+      //Running average value
+      analogValues[cycle][analog] = total >> ra.powerOfTwo;
+
+      //Send on serial port on change
+      if (analogValues[cycleCheck][analog] != analogValues[cycle][analog])
         sendAnalog(analog, analogValues[cycle][analog]);
+    }
   }
 }
 
@@ -279,7 +331,7 @@ void serialEvent1() {
         Serial.println("DUMP_END");
         isDumping = false;
       }
-      else {
+      else if (false) {
         Serial.print("Slave Reception (");
         Serial.print(serialInputDataIndex[sI]);
         Serial.print(") (RX @ ");

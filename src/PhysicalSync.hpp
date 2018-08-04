@@ -40,7 +40,17 @@ class LEDvars {
 public:
     float value = 0, valueRounded = 0, valueRoundedOld = -1;
 public:
-    bool blink(float deltaTime);
+    bool blink(float deltaTime, float threshold = 0.5);
+};
+
+//Menu item
+struct PhysicalSyncMenu : MenuItem {
+public:
+    OSCRemote *oscRemote;
+    const char *oscMessage;
+
+public:
+    void onAction(EventAction &e) override;
 };
 
 //Main class
@@ -83,7 +93,7 @@ public:
     //void onDelete() override;
 
 public:
-    //Lights
+    //Widgets
     MultiLightWidget *oscLightInt = NULL, *oscLightExt = NULL;
     //Audio interface
     AudioInterfaceIO audioIO;
@@ -98,7 +108,6 @@ private:
     DoubleRingBuffer<Frame<AUDIO_OUTPUTS>, 16> outputBuffer;
 
     //LED variables
-    float ledStatusExtPhase;
     LEDvars ledStatusInt, pingLED;
     std::string protocolDispatcherPath;
     bool isProtocolDispatcherFound = false, isProtocolDispatcherTalking = false;
@@ -140,12 +149,13 @@ public:
     int  mapToLED(unsigned int moduleId, unsigned int lightId) override;
 
     //Dump of data
-    void dumpLights    (const char *address) override;
+    void dumpLights    (const char *address, bool inLine = false) override;
     void dumpModules   (const char *address) override;
     void dumpParameters(const char *address) override;
     void dumpJacks     (const char *address) override;
 
     //Communication
+    void send(const char *message) override;
     void pongReceived() override;
 
 public:
@@ -169,21 +179,6 @@ public:
 public:
     //Additional menus
     void appendContextMenu(Menu *menu);
-};
-
-
-//Menu item
-struct PhysicalSyncMenu : MenuItem {
-public:
-    PhysicalSync *module;
-    const char *oscMessage;
-
-public:
-    void onAction(EventAction &e) override {
-        info("—> %s", oscMessage);
-        if((module) && (module->osc))
-            module->osc->send(oscMessage);
-    }
 };
 
 

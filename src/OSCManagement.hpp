@@ -31,12 +31,13 @@ public:
     virtual int  mapToLED(unsigned int moduleId, unsigned int lightId) = 0;
 
     //Dump of data
-    virtual void dumpLights    (const char *address) = 0;
+    virtual void dumpLights    (const char *address, bool inLine = false) = 0;
     virtual void dumpModules   (const char *address) = 0;
     virtual void dumpParameters(const char *address) = 0;
     virtual void dumpJacks     (const char *address) = 0;
 
     //Communication
+    virtual void send(const char *message) = 0;
     virtual void pongReceived() = 0;
 };
 
