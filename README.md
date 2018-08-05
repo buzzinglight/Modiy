@@ -31,7 +31,7 @@ make
 - Launch *VCV Rack* with an instance of *Modiy* plugin on your rack and refresh the webpage (you can launch it again in the menu of *Protocol Dispatcher* from the traybar icon)
 
 ## Wiring
-Pin number for each potentiometers, switches or patching jacks can be found on the admin page of Modiy : right-click —> *Open webpage* then select *Show pin number* (selected by default). Then, wire components in this way :
+Pin number for each potentiometers, switches or patching jacks can be found on the admin page of Modiy : right-click —> *Open webpage* then select *Show pin number* (selected by default). Wire components in this way (and add as many Arduino MEGA as needed by Modiy) :
 
 ![alt text](https://github.com/buzzinglight/Modiy/raw/master/res/arduino/Wiring%20help%20-%20wiring.png "Wiring schematic")
 
