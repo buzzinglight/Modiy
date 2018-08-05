@@ -10,7 +10,7 @@ OSCManagement::OSCManagement(OSCRemote *_oscRemote, std::string _dispatcherIp, i
 void OSCManagement::ProcessMessage(const osc::ReceivedMessage& m, const IpEndpointName& remoteEndpoint) {
     try {
         if(false) {
-            info("Reception OSC sur %s avec %d arguments", m.AddressPattern(), m.ArgumentCount());
+            info("OSC message in %s with %d arguments", m.AddressPattern(), m.ArgumentCount());
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
             for(int i = 0 ; i < m.ArgumentCount() ; i++)
                 info("\t%d = %f", i, asNumber(arg++));
