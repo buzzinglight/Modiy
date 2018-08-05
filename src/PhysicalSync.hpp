@@ -26,6 +26,7 @@ class ModuleWithId {
 public:
     ModuleWidget *widget = NULL;
     std::vector<LightWithWidget> lights;
+    std::vector<ParamWidget*> potentiometers, switches;
     int moduleId = -1;
 };
 class WireWithId {
@@ -128,7 +129,8 @@ private:
     //Getters
     Port*           getInputPort (unsigned int moduleId, unsigned int inputId);
     Port*           getOutputPort(unsigned int moduleId, unsigned int outputId);
-    ParamWidget*    getParameter (unsigned int moduleId, unsigned int paramId);
+    ParamWidget*    getPotentiometer(unsigned int moduleId, unsigned int potentiometerId);
+    ParamWidget*    getSwitch       (unsigned int moduleId, unsigned int switchId);
     LightWithWidget getLight     (unsigned int moduleId, unsigned int lightId);
     ModuleWithId    getModule    (unsigned int moduleId);
     WireWithId      getWire      (unsigned int inputModuleId, unsigned int inputPortId, unsigned int outputModuleId, unsigned int outputPortId);
@@ -136,23 +138,27 @@ private:
 //OSC Remote methods
 public:
     //Setters
-    void setParameter(unsigned int moduleId, unsigned int paramId, float paramValue, bool isNormalized = false, bool additive = false) override;
+    void setPotentiometer(unsigned int moduleId, unsigned int potentiometerId, float potentiometerValue, bool isNormalized = false, bool additive = false) override;
     void setConnection(unsigned int outputModuleId, unsigned int outputPortId, unsigned int inputModuleId, unsigned int inputPortId, bool active) override;
+    void setSwitch(unsigned int moduleId, unsigned int switchId, float switchValue) override;
     void clearConnection() override;
-    void resetParameter(unsigned int moduleId, unsigned int paramId) override;
+    void resetPotentiometer(unsigned int moduleId, unsigned int potentiometerId) override;
 
     //Absolute ID mapping to module (and reverse)
-    bool mapFromPotentiometer(unsigned int index, int *moduleId, int *paramId) override;
-    int  mapToPotentiometer(unsigned int moduleId, unsigned int paramId) override;
+    bool mapFromPotentiometer(unsigned int index, int *moduleId, int *potentiometerId) override;
+    int  mapToPotentiometer(unsigned int moduleId, unsigned int potentiometerId) override;
+    bool mapFromSwitch(unsigned int index, int *moduleId, int *switchId) override;
+    int  mapToSwitch(unsigned int moduleId, unsigned int switchId) override;
     bool mapFromJack (unsigned int index, int *moduleId, int *inputOrOutputId, bool *isInput) override;
     int  mapToJack(unsigned int moduleId, unsigned int inputOrOutputId, bool isInput) override;
     int  mapToLED(unsigned int moduleId, unsigned int lightId) override;
 
     //Dump of data
-    void dumpLights    (const char *address, bool inLine = false) override;
-    void dumpModules   (const char *address) override;
-    void dumpParameters(const char *address) override;
-    void dumpJacks     (const char *address) override;
+    void dumpLights        (const char *address, bool inLine = false) override;
+    void dumpModules       (const char *address) override;
+    void dumpPotentiometers(const char *address) override;
+    void dumpSwitches      (const char *address) override;
+    void dumpJacks         (const char *address) override;
 
     //Communication
     void send(const char *message) override;

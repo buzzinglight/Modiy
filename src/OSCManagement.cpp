@@ -20,38 +20,55 @@ void OSCManagement::ProcessMessage(const osc::ReceivedMessage& m, const IpEndpoi
         if(std::strcmp(m.AddressPattern(), "/pong") == 0) {
             oscRemote->pongReceived();
         }
-        //Parameters change
-        else if( (((std::strcmp(m.AddressPattern(), "/parameter/set/absolute") == 0) || (std::strcmp(m.AddressPattern(), "/parameter/set/norm") == 0) || (std::strcmp(m.AddressPattern(), "/parameter/set/norm/10bits") == 0)) ||
-             ((std::strcmp(m.AddressPattern(), "/parameter/add/absolute") == 0) || (std::strcmp(m.AddressPattern(), "/parameter/add/norm") == 0) || (std::strcmp(m.AddressPattern(), "/parameter/set/norm/10bits") == 0)) || (std::strcmp(m.AddressPattern(), "/A") == 0)) && (m.ArgumentCount())) {
+        //Potentiometers change
+        else if((((std::strcmp(m.AddressPattern(), "/potentiometer/set/absolute") == 0) || (std::strcmp(m.AddressPattern(), "/potentiometer/set/norm") == 0) || (std::strcmp(m.AddressPattern(), "/potentiometer/set/norm/10bits") == 0)) ||
+                 ((std::strcmp(m.AddressPattern(), "/potentiometer/add/absolute") == 0) || (std::strcmp(m.AddressPattern(), "/potentiometer/add/norm") == 0) || (std::strcmp(m.AddressPattern(), "/potentiometer/set/norm/10bits") == 0)) || (std::strcmp(m.AddressPattern(), "/A") == 0)) && (m.ArgumentCount())) {
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
-            int moduleId = -1, paramId = -1;
-            float paramValue = -1;
+            int moduleId = -1, potentiometerId = -1;
+            float potentiometerValue = -1;
             if(m.ArgumentCount() == 3) {
-                moduleId   = asNumber(arg++);
-                paramId    = asNumber(arg++);
-                paramValue = asNumber(arg++);
+                moduleId = asNumber(arg++);
+                potentiometerId = asNumber(arg++);
+                potentiometerValue = asNumber(arg++);
             }
             else if(m.ArgumentCount() == 2) {
-                oscRemote->mapFromPotentiometer(asNumber(arg++), &moduleId, &paramId);
-                paramValue = asNumber(arg++);
+                oscRemote->mapFromPotentiometer(asNumber(arg++), &moduleId, &potentiometerId);
+                potentiometerValue = asNumber(arg++);
             }
-            if (std::strcmp(m.AddressPattern(), "/parameter/set/absolute") == 0)     oscRemote->setParameter(moduleId, paramId, paramValue);
-            if (std::strcmp(m.AddressPattern(), "/parameter/set/norm") == 0)         oscRemote->setParameter(moduleId, paramId, paramValue, true);
-            if((std::strcmp(m.AddressPattern(), "/parameter/set/norm/10bits") == 0) || (std::strcmp(m.AddressPattern(), "/A") == 0))  oscRemote->setParameter(moduleId, paramId, paramValue/1023., true);
-            if (std::strcmp(m.AddressPattern(), "/parameter/add/absolute") == 0)     oscRemote->setParameter(moduleId, paramId, paramValue, false, true);
-            if (std::strcmp(m.AddressPattern(), "/parameter/add/norm") == 0)         oscRemote->setParameter(moduleId, paramId, paramValue, true, true);
-            if (std::strcmp(m.AddressPattern(), "/parameter/add/norm/10bits") == 0)  oscRemote->setParameter(moduleId, paramId, paramValue/1023., true, true);
+            if (std::strcmp(m.AddressPattern(), "/potentiometer/set/absolute") == 0)     oscRemote->setPotentiometer(moduleId, potentiometerId, potentiometerValue);
+            if (std::strcmp(m.AddressPattern(), "/potentiometer/set/norm") == 0)         oscRemote->setPotentiometer(moduleId, potentiometerId, potentiometerValue, true);
+            if((std::strcmp(m.AddressPattern(), "/potentiometer/set/norm/10bits") == 0) || (std::strcmp(m.AddressPattern(), "/A") == 0))  oscRemote->setPotentiometer(moduleId, potentiometerId, potentiometerValue/1023., true);
+            if (std::strcmp(m.AddressPattern(), "/potentiometer/add/absolute") == 0)     oscRemote->setPotentiometer(moduleId, potentiometerId, potentiometerValue, false, true);
+            if (std::strcmp(m.AddressPattern(), "/potentiometer/add/norm") == 0)         oscRemote->setPotentiometer(moduleId, potentiometerId, potentiometerValue, true, true);
+            if (std::strcmp(m.AddressPattern(), "/potentiometer/add/norm/10bits") == 0)  oscRemote->setPotentiometer(moduleId, potentiometerId, potentiometerValue/1023., true, true);
         }
-        else if((std::strcmp(m.AddressPattern(), "/parameter/reset") == 0) && (m.ArgumentCount())) {
+        else if((std::strcmp(m.AddressPattern(), "/potentiometer/reset") == 0) && (m.ArgumentCount())) {
             osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
-            int moduleId = -1, paramId = -1;
+            int moduleId = -1, potentiometerId = -1;
             if(m.ArgumentCount() == 2) {
-                moduleId   = asNumber(arg++);
-                paramId    = asNumber(arg++);
+                moduleId = asNumber(arg++);
+                potentiometerId = asNumber(arg++);
             }
             else if(m.ArgumentCount() == 1)
-                oscRemote->mapFromPotentiometer(asNumber(arg++), &moduleId, &paramId);
-            oscRemote->resetParameter(moduleId, paramId);
+                oscRemote->mapFromPotentiometer(asNumber(arg++), &moduleId, &potentiometerId);
+            oscRemote->resetPotentiometer(moduleId, potentiometerId);
+        }
+
+        //Switches change
+        else if(((std::strcmp(m.AddressPattern(), "/switch") == 0) || (std::strcmp(m.AddressPattern(), "/S") == 0)) && (m.ArgumentCount())) {
+            osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
+            int moduleId = -1, switchId = -1;
+            float switchValue = -1;
+            if(m.ArgumentCount() == 3) {
+                moduleId    = asNumber(arg++);
+                switchId    = asNumber(arg++);
+                switchValue = asNumber(arg++);
+            }
+            else if(m.ArgumentCount() == 2) {
+                oscRemote->mapFromSwitch(asNumber(arg++), &moduleId, &switchId);
+                switchValue = asNumber(arg++);
+            }
+            oscRemote->setSwitch(moduleId, switchId, switchValue);
         }
 
         //Wires change
@@ -67,11 +84,11 @@ void OSCManagement::ProcessMessage(const osc::ReceivedMessage& m, const IpEndpoi
                 active         = asNumber(arg++);
             }
             else if(m.ArgumentCount() == 3) {
-                bool firstIsInput = false, secondIsInput = false;;
+                bool firstIsInput = false, secondIsInput = false;
                 oscRemote->mapFromJack(asNumber(arg++), &outputModuleId, &outputId, &firstIsInput);
                 oscRemote->mapFromJack(asNumber(arg++), &inputModuleId,  &inputId,  &secondIsInput);
                 if((firstIsInput) && (!secondIsInput)) {
-                    info("Inversion des paramètres : output —> input");
+                    info("Inversion des arguments : output —> input");
                     int outputModuleIdTmp = outputModuleId, outputIdTmp = outputId;
                     outputModuleId = inputModuleId;     outputId = inputId;     firstIsInput  = !firstIsInput;
                     inputModuleId  = outputModuleIdTmp; inputId  = outputIdTmp; secondIsInput = !secondIsInput;
@@ -87,7 +104,9 @@ void OSCManagement::ProcessMessage(const osc::ReceivedMessage& m, const IpEndpoi
         else if(std::strcmp(m.AddressPattern(), "/dump/modules") == 0)
             oscRemote->dumpModules(m.AddressPattern());
         else if(std::strcmp(m.AddressPattern(), "/dump/potentiometers") == 0)
-            oscRemote->dumpParameters(m.AddressPattern());
+            oscRemote->dumpPotentiometers(m.AddressPattern());
+        else if(std::strcmp(m.AddressPattern(), "/dump/switches") == 0)
+            oscRemote->dumpSwitches(m.AddressPattern());
         else if(std::strcmp(m.AddressPattern(), "/dump/jacks") == 0)
             oscRemote->dumpJacks(m.AddressPattern());
         else if(std::strcmp(m.AddressPattern(), "/dump/leds") == 0)
@@ -126,11 +145,11 @@ void OSCManagement::send(const char *address, int valueIndex, unsigned int modul
     packet << osc::EndMessage;
     transmitSocket.Send(packet.Data(), packet.Size());
 }
-void OSCManagement::send(const char *address, unsigned int moduleId, std::string slug, std::string name, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbParameters, unsigned int nbLights) {
+void OSCManagement::send(const char *address, unsigned int moduleId, std::string slug, std::string name, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbPotentiometers, unsigned int nbSwitches, unsigned int nbLights) {
     UdpTransmitSocket transmitSocket(IpEndpointName(dispatcherIp, dispatcherPort));
     osc::OutboundPacketStream packet(buffer, 1024);
 
-    packet << osc::BeginMessage(address) << (int)moduleId << slug.c_str() << name.c_str() << position.x << position.y << size.x << size.y  << (int)nbInputs << (int)nbOutputs << (int)nbParameters << (int)nbLights << osc::EndMessage;
+    packet << osc::BeginMessage(address) << (int)moduleId << slug.c_str() << name.c_str() << position.x << position.y << size.x << size.y  << (int)nbInputs << (int)nbOutputs << (int)nbPotentiometers << (int)nbSwitches << (int)nbLights << osc::EndMessage;
     transmitSocket.Send(packet.Data(), packet.Size());
 }
 void OSCManagement::send(const char *address, float value) {

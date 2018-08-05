@@ -1,12 +1,12 @@
 //HardwareSerial.h -> #define SERIAL_RX_BUFFER_SIZE 256
 
-//Jack - Analog - LED (JAL)
-struct JAL {
-  enum Type { Jack, Analog, LED };
-  uint16_t offset[3] = {0, 0, 0};
-  uint8_t  count[3]  = {0, 0, 0};
+//Jack - Analog - LED - Switches (JALS)
+struct JALS {
+  enum Type { Jack, Analog, LED, Switch };
+  uint16_t offset[4] = {0, 0, 0, 0};
+  uint8_t  count[4]  = {0, 0, 0, 0};
 };
-JAL jal;
+JALS jals;
 
 
 //Intercommunication betweend cards
@@ -15,9 +15,17 @@ uint8_t cycle = 1, cycleCheck = 0;
 bool firstLoop = true;
 
 
-//Wires = Jacks (digital)
-const uint8_t jackPinout[] = {14, 15, 16, 17, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 47, 48, 49, 50, 51, 52, 53};
+//All avalailable digital pins to be shared between Wires/Jack and Buttons/Switches
+//{14, 15, 16, 17, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 47, 48, 49, 50, 51, 52, 53};
+
+//Wires = Jacks (Digital)
+const uint8_t jackPinout[] = {24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 47, 48, 49, 50, 51, 52, 53};
 uint8_t ***jackValues;
+
+
+//Buttons = Switches (Digital)
+const uint8_t switchPinout[] = {14, 15, 16, 17, 20, 21, 22, 23};
+uint16_t **switchValues;
 
 
 //Potentiometers = Analog
@@ -54,35 +62,45 @@ void setup() {
   delay(1000);
 
   //Size of each pinouts categories
-  jal.count[jal.Jack]   = sizeof(jackPinout);
-  jal.count[jal.Analog] = sizeof(analogPinout);
-  jal.count[jal.LED]    = sizeof(ledPinout);
+  jals.count[jals.Jack]   = sizeof(jackPinout);
+  jals.count[jals.Analog] = sizeof(analogPinout);
+  jals.count[jals.LED]    = sizeof(ledPinout);
+  jals.count[jals.Switch] = sizeof(switchPinout);
   ra.number = 1 << ra.powerOfTwo;
-  Serial.print("JAL_O ");
-  Serial.print(jal.offset[jal.Jack]);
+
+  //Print some debug infos
+  Serial.print("JALS_O ");
+  Serial.print(jals.offset[jals.Jack]);
   Serial.print(" ");
-  Serial.print(jal.offset[jal.Analog]);
+  Serial.print(jals.offset[jals.Analog]);
   Serial.print(" ");
-  Serial.println(jal.offset[jal.LED]);
-  Serial.print("JAL_C ");
-  Serial.print(jal.count[jal.Jack]);
+  Serial.print(jals.offset[jals.LED]);
   Serial.print(" ");
-  Serial.print(jal.count[jal.Analog]);
+  Serial.println(jals.count[jals.Switch]);
+
+  Serial.print("JALS_C ");
+  Serial.print(jals.count[jals.Jack]);
   Serial.print(" ");
-  Serial.println(jal.count[jal.LED]);
+  Serial.print(jals.count[jals.Analog]);
+  Serial.print(" ");
+  Serial.print(jals.count[jals.LED]);
+  Serial.print(" ");
+  Serial.println(jals.count[jals.Switch]);
+
   Serial.print("Serial Buffer\t");
   Serial.println(SERIAL_RX_BUFFER_SIZE);
   Serial.print("Running average\t");
   Serial.println(ra.number);
 
+  //Allocate arrays/matrix
   alloc();
-
-  //LED refresh counter
-  lastLEDAsk = millis();
 
   //Analog running average fill
   for (uint8_t raIndex = 0 ; raIndex < ra.number ; raIndex++)
     processAnalog(false);
+
+  //LED refresh counter
+  lastLEDAsk = millis();
 }
 
 void loop() {
@@ -94,6 +112,7 @@ void loop() {
     Serial.println("DUMP_START");
   if (!isDumping) {
     processJack();
+    processSwitch();
     processAnalog(true);
   }
   if (firstLoop)
@@ -102,7 +121,7 @@ void loop() {
   //LED refresh ask each 50ms
   if ((millis() - lastLEDAsk) > 50) {
     lastLEDAsk = millis();
-    Serial.println("L");
+    sendLED();
   }
 
   //Comparaison n/n-1
@@ -124,10 +143,10 @@ void alloc() {
   //Initialize the matrix (upper-right diag)
   jackValues = new uint8_t**[2];
   for (uint8_t cycle = 0 ; cycle < 2 ; cycle++) {
-    jackValues[cycle] = new uint8_t*[jal.count[jal.Jack]];
-    for (uint8_t jack = 0 ; jack < jal.count[jal.Jack] ; jack++) {
-      jackValues[cycle][jack] = new uint8_t[jal.count[jal.Jack] - (jack + 1)];
-      for (uint8_t jackTested = 0 ; jackTested < (jal.count[jal.Jack] - (jack + 1)) ; jackTested++)
+    jackValues[cycle] = new uint8_t*[jals.count[jals.Jack]];
+    for (uint8_t jack = 0 ; jack < jals.count[jals.Jack] ; jack++) {
+      jackValues[cycle][jack] = new uint8_t[jals.count[jals.Jack] - (jack + 1)];
+      for (uint8_t jackTested = 0 ; jackTested < (jals.count[jals.Jack] - (jack + 1)) ; jackTested++)
         jackValues[cycle][jack][jackTested] = (cycle) ? (0) : (-1);
     }
   }
@@ -135,31 +154,43 @@ void alloc() {
   //Initialize analog values storage
   analogValues = new uint16_t*[2];
   for (uint8_t cycle = 0 ; cycle < 2 ; cycle++) {
-    analogValues[cycle] = new uint16_t[jal.count[jal.Analog]];
-    for (uint8_t analog = 0 ; analog < jal.count[jal.Analog] ; analog++)
+    analogValues[cycle] = new uint16_t[jals.count[jals.Analog]];
+    for (uint8_t analog = 0 ; analog < jals.count[jals.Analog] ; analog++)
       analogValues[cycle][analog] = 0;
   }
 
   //Initialize analog running average
-  ra.values = new uint16_t*[jal.count[jal.Analog]];
-  for (uint8_t analog = 0 ; analog < jal.count[jal.Analog] ; analog++) {
+  ra.values = new uint16_t*[jals.count[jals.Analog]];
+  for (uint8_t analog = 0 ; analog < jals.count[jals.Analog] ; analog++) {
     ra.values[analog] = new uint16_t[ra.number];
     for (uint8_t raIndex = 0 ; raIndex < ra.number ; raIndex++)
       ra.values[analog][raIndex] = 0;
   }
 
-  //Configure digital pins with internal pull up
-  for (uint8_t jack = 0 ; jack < jal.count[jal.Jack] ; jack++)
+  //Initialize switches values storage
+  switchValues = new uint16_t*[2];
+  for (uint8_t cycle = 0 ; cycle < 2 ; cycle++) {
+    switchValues[cycle] = new uint16_t[jals.count[jals.Switch]];
+    for (uint8_t button = 0 ; button < jals.count[jals.Switch] ; button++)
+      switchValues[cycle][button] = 0;
+  }
+
+  //Configure digital pins (for jacks) with internal pull up
+  for (uint8_t jack = 0 ; jack < jals.count[jals.Jack] ; jack++)
     pinMode(jackPinout[jack], INPUT_PULLUP);
 
+  //Configure digital pins (for switches) with internal pull up
+  for (uint8_t button = 0 ; button < jals.count[jals.Switch] ; button++)
+    pinMode(switchPinout[button], INPUT_PULLUP);
+
   //Configure PWM pins to output @ 0Hz
-  for (uint8_t led = 0 ; led < jal.count[jal.LED] ; led++) {
+  for (uint8_t led = 0 ; led < jals.count[jals.LED] ; led++) {
     pinMode(ledPinout[led], OUTPUT);
     analogWrite(ledPinout[led], 0);
   }
 
   //Configure analog pins
-  for (uint8_t analog = 0 ; analog < jal.count[jal.Analog] ; analog++)
+  for (uint8_t analog = 0 ; analog < jals.count[jals.Analog] ; analog++)
     digitalWrite(analogPinout[analog], INPUT_PULLUP);
 }
 
@@ -167,19 +198,19 @@ void alloc() {
 //Read digital cord patching
 void processJack() {
   //Browse all digital pins
-  for (uint8_t jack = 0 ; jack < jal.count[jal.Jack] ; jack++) {
+  for (uint8_t jack = 0 ; jack < jals.count[jals.Jack] ; jack++) {
     //Switch current pin to output (others are inputs)
     pinMode(jackPinout[jack], OUTPUT);
     digitalWrite(jackPinout[jack], LOW);
 
     //Browse all the other digital pins
-    for (uint8_t jackTested = 0 ; jackTested < (jal.count[jal.Jack] - (jack + 1)) ; jackTested++) {
+    for (uint8_t jackTested = 0 ; jackTested < (jals.count[jals.Jack] - (jack + 1)) ; jackTested++) {
       //Read value
       jackValues[cycle][jack][jackTested] = 1 - digitalRead(jackPinout[jackTested + (jack + 1)]);
 
       //Send on serial port on change
       if (jackValues[cycle][jack][jackTested] != jackValues[cycleCheck][jack][jackTested])
-        sendDigital(jack, jackTested + (jack + 1), jackValues[cycle][jack][jackTested]);
+        sendJack(jack, jackTested + (jack + 1), jackValues[cycle][jack][jackTested]);
     }
 
     //Switch back to input
@@ -194,7 +225,7 @@ void processAnalog(bool doSend) {
   uint16_t total = 0;
 
   //Browse all analog inputs
-  for (uint8_t analog = 0 ; analog < jal.count[jal.Analog] ; analog++) {
+  for (uint8_t analog = 0 ; analog < jals.count[jals.Analog] ; analog++) {
     //Read value
     ra.values[analog][ra.index] = analogRead(analogPinout[analog]);
 
@@ -214,6 +245,17 @@ void processAnalog(bool doSend) {
   }
 }
 
+//Real all switches values
+void processSwitch() {
+  //Browse all digital pins
+  for (uint8_t button = 0 ; button < jals.count[jals.Switch] ; button++) {
+    switchValues[cycle][button] = 1 - digitalRead(switchPinout[button]);
+
+    //Send on serial port on change
+    if (switchValues[cycle][button] != switchValues[cycleCheck][button])
+      sendSwitch(button, switchValues[cycle][button]);
+  }
+}
 
 //Serial port reception
 void serialEvent() {
@@ -236,7 +278,7 @@ void serialEvent() {
       if (serialInput[sI][0] == "L") {
         bool hasRedirected = false;
         for (uint8_t led = 0 ; led < serialInputDataIndex[sI] ; led++) {
-          if (led < jal.count[jal.LED]) {
+          if (led < jals.count[jals.LED]) {
             if (false) {
               Serial.print("L PIN #");
               Serial.print(ledPinout[led]);
@@ -277,17 +319,28 @@ void serialEvent() {
 
 void sendAnalog(uint16_t port, uint16_t value) {
   Serial.print("A ");
-  Serial.print(jal.offset[jal.Analog] + port);
+  Serial.print(jals.offset[jals.Analog] + port);
   Serial.print(" ");
   Serial.println(value);
   if (firstLoop)
     delay(1);
 }
-void sendDigital(uint16_t jackA, uint16_t jackB, uint8_t onoff) {
+void sendJack(uint16_t jackA, uint16_t jackB, uint8_t onoff) {
   Serial.print("J ");
-  Serial.print(jal.offset[jal.Jack] + jackA);
+  Serial.print(jals.offset[jals.Jack] + jackA);
   Serial.print(" ");
-  Serial.print(jal.offset[jal.Jack] + jackB);
+  Serial.print(jals.offset[jals.Jack] + jackB);
+  Serial.print(" ");
+  Serial.println(onoff);
+  if (firstLoop)
+    delay(1);
+}
+void sendLED() {
+  Serial.println("L");
+}
+void sendSwitch(uint16_t button, uint8_t onoff) {
+  Serial.print("S ");
+  Serial.print(jals.offset[jals.Switch] + button);
   Serial.print(" ");
   Serial.println(onoff);
   if (firstLoop)
@@ -319,10 +372,13 @@ void serialEvent1() {
     if (receivedChar == '\n') {
       //Analog message reception
       if ((serialInputDataIndex[sI] == 2) && (serialInput[sI][0] == "A"))
-        sendAnalog(jal.count[jal.Analog] + serialInput[sI][1].toInt(), serialInput[sI][2].toInt());
+        sendAnalog(jals.count[jals.Analog] + serialInput[sI][1].toInt(), serialInput[sI][2].toInt());
+      //Switch message reception
+      else if ((serialInputDataIndex[sI] == 2) && (serialInput[sI][0] == "S"))
+        sendAnalog(jals.count[jals.Switch] + serialInput[sI][1].toInt(), serialInput[sI][2].toInt());
       //Digital message reception
       else if ((serialInputDataIndex[sI] == 3) && (serialInput[sI][0] == "J"))
-        sendDigital(jal.count[jal.Jack] + serialInput[sI][1].toInt(), jal.count[jal.Jack] + serialInput[sI][2].toInt(), serialInput[sI][3].toInt());
+        sendJack(jals.count[jals.Jack] + serialInput[sI][1].toInt(), jals.count[jals.Jack] + serialInput[sI][2].toInt(), serialInput[sI][3].toInt());
       else if (serialInput[sI][0] == "DUMP_START") {
         Serial.println("DUMP_START");
         isDumping = true;

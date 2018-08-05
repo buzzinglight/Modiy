@@ -32,7 +32,7 @@ void PhysicalSync::onReset() {
 
 
 
-//Update modules, jacks, parameters, LEDs… cache
+//Update modules, jacks, potentiometers, switches, LEDs… cache
 void PhysicalSync::updateCache(bool force) {
     bool debug = false;
     if((updateCacheNeeded) || (force)) {
@@ -64,6 +64,28 @@ void PhysicalSync::updateCache(bool force) {
                             moduleWithId.lights.push_back(light);
                         }
                     }
+
+                    //Store potentiometers and switches
+                    for(unsigned int parameterId = 0 ; parameterId < moduleWithId.widget->module->params.size() ; parameterId++) {
+                        ParamWidget *parameter = moduleWithId.widget->params.at(parameterId);
+                        ToggleSwitch *isToggle = NULL;
+                        MomentarySwitch *isMomentary = NULL;
+                        try {
+                            isToggle = dynamic_cast<ToggleSwitch*>(parameter);
+                        } catch(const std::bad_cast& e) {
+                            isToggle = NULL;
+                        }
+                        try {
+                            isMomentary = dynamic_cast<MomentarySwitch*>(parameter);
+                        } catch(const std::bad_cast& e) {
+                            isMomentary = NULL;
+                        }
+
+                        if((isToggle) || (isMomentary))
+                            moduleWithId.switches.push_back(parameter);
+                        else
+                            moduleWithId.potentiometers.push_back(parameter);
+                    }
                 }
 
                 //Add to container
@@ -94,15 +116,17 @@ void PhysicalSync::updateCache(bool force) {
             Model  *model  = widget->model;
             if((module) && (model)) {
                 if(debug) {
-                    info("Module %d : %s %s @ (%f %f) (I/O/P/L : %d %d %d %d)", moduleId, model->slug.c_str(), model->name.c_str(), widget->box.pos.x, widget->box.pos.y, module->inputs.size(), module->outputs.size(), module->params.size(), moduleWithId.lights.size());
+                    info("Module %d : %s %s @ (%f %f) (I/O/P/S/L : %d %d %d %d %d)", moduleId, model->slug.c_str(), model->name.c_str(), widget->box.pos.x, widget->box.pos.y, module->inputs.size(), module->outputs.size(), moduleWithId.potentiometers.size(), moduleWithId.switches.size(), moduleWithId.lights.size());
                     for(unsigned int inputId = 0 ; inputId < module->inputs.size() ; inputId++)
                         info("Input %d : %d", inputId, module->inputs[inputId].active);
                     for(unsigned int outputId = 0 ; outputId < module->outputs.size() ; outputId++)
                         info("Output %d : %d", outputId, module->outputs[outputId].active);
+                    for(unsigned int potentiometerId = 0 ; potentiometerId < moduleWithId.potentiometers.size() ; potentiometerId++)
+                        info("Potentiometer %d : %f", potentiometerId, moduleWithId.potentiometers.at(potentiometerId)->value);
+                    for(unsigned int switchId = 0 ; switchId < moduleWithId.switches.size() ; switchId++)
+                        info("Switch %d : %f", switchId, moduleWithId.switches.at(switchId)->value);
                     for(unsigned int lightId = 0 ; lightId < moduleWithId.lights.size() ; lightId++)
-                        info("Light %d : %f", lightId, moduleWithId.lights[lightId].light.value);
-                    for(unsigned int paramId = 0 ; paramId < module->params.size() ; paramId++)
-                        info("Param %d : %f", paramId, module->params[paramId].value);
+                        info("Light %d : %f", lightId, moduleWithId.lights.at(lightId).light.value);
                 }
             }
         }
@@ -311,11 +335,19 @@ void PhysicalSync::step() {
 
 
 //Getters
-ParamWidget* PhysicalSync::getParameter(unsigned int moduleId, unsigned int paramId) {
+ParamWidget* PhysicalSync::getPotentiometer(unsigned int moduleId, unsigned int potentiometerId) {
     ModuleWithId module = getModule(moduleId);
     if(module.widget) {
-        if(paramId < module.widget->params.size())
-            return module.widget->params.at(paramId);
+        if(potentiometerId < module.potentiometers.size())
+            return module.potentiometers.at(potentiometerId);
+    }
+    return 0;
+}
+ParamWidget* PhysicalSync::getSwitch(unsigned int moduleId, unsigned int switchId) {
+    ModuleWithId module = getModule(moduleId);
+    if(module.widget) {
+        if(switchId < module.switches.size())
+            return module.switches.at(switchId);
     }
     return 0;
 }
@@ -362,26 +394,53 @@ WireWithId PhysicalSync::getWire(unsigned int inputModuleId, unsigned int inputP
 
 
 //Absolute ID mapping to module (and reverse)
-bool PhysicalSync::mapFromPotentiometer(unsigned int index, int *moduleId, int *paramId) {
+bool PhysicalSync::mapFromPotentiometer(unsigned int index, int *moduleId, int *potentiometerId) {
     updateCache();
-    Module *lastModule = 0;
+    ModuleWithId lastModule;
     *moduleId = 0;
-    *paramId  = 0;
+    *potentiometerId  = 0;
 
     //Search for index overflow in modules
     for(unsigned int lastModuleId = 0 ; lastModuleId < modules.size() ; lastModuleId++) {
-        lastModule = modules.at(lastModuleId).widget->module;
-        if(index >= lastModule->params.size()) {
-            index -= lastModule->params.size();
+        lastModule = modules.at(lastModuleId);
+        if(index >= lastModule.potentiometers.size()) {
+            index -= lastModule.potentiometers.size();
             *moduleId = lastModuleId+1;
         }
         else
             break;
     }
 
-    //Add rest of index to paramId
-    if(lastModule) {
-        *paramId = index;
+    //Add rest of index to potentiometerId
+    if(lastModule.widget) {
+        *potentiometerId = index;
+        return true;
+    }
+    else {
+        warn("Error with mapFromPotentiometer");
+        return false;
+    }
+}
+bool PhysicalSync::mapFromSwitch(unsigned int index, int *moduleId, int *switchId) {
+    updateCache();
+    ModuleWithId lastModule;
+    *moduleId = 0;
+    *switchId = 0;
+
+    //Search for index overflow in modules
+    for(unsigned int lastModuleId = 0 ; lastModuleId < modules.size() ; lastModuleId++) {
+        lastModule = modules.at(lastModuleId);
+        if(index >= lastModule.switches.size()) {
+            index -= lastModule.switches.size();
+            *moduleId = lastModuleId+1;
+        }
+        else
+            break;
+    }
+
+    //Add rest of index to potentiometerId
+    if(lastModule.widget) {
+        *switchId = index;
         return true;
     }
     else {
@@ -438,20 +497,36 @@ int PhysicalSync::mapToLED(unsigned int moduleId, unsigned int lightId) {
         warn("Error with mapToLED");
     return index;
 }
-int PhysicalSync::mapToPotentiometer(unsigned int moduleId, unsigned int paramId) {
+int PhysicalSync::mapToPotentiometer(unsigned int moduleId, unsigned int potentiometerId) {
     updateCache();
-    ParamWidget *param = getParameter(moduleId, paramId);
+    ParamWidget *potentiometer = getPotentiometer(moduleId, potentiometerId);
     int index = -1;
-    if(param) {
+    if(potentiometer) {
         index = 0;
 
         //Look for all modules before
         for(unsigned int lastModuleId = 0 ; lastModuleId < moduleId ; lastModuleId++)
-            index += modules.at(lastModuleId).widget->module->params.size();
-        index += paramId;
+            index += modules.at(lastModuleId).potentiometers.size();
+        index += potentiometerId;
     }
     else
         warn("Error with mapToPotentiometer");
+    return index;
+}
+int PhysicalSync::mapToSwitch(unsigned int moduleId, unsigned int switchId) {
+    updateCache();
+    ParamWidget *button = getSwitch(moduleId, switchId);
+    int index = -1;
+    if(button) {
+        index = 0;
+
+        //Look for all modules before
+        for(unsigned int lastModuleId = 0 ; lastModuleId < moduleId ; lastModuleId++)
+            index += modules.at(lastModuleId).switches.size();
+        index += switchId;
+    }
+    else
+        warn("Error with mapToSwitch");
     return index;
 }
 int PhysicalSync::mapToJack(unsigned int moduleId, unsigned int inputOrOutputId, bool isInput) {
@@ -480,39 +555,53 @@ int PhysicalSync::mapToJack(unsigned int moduleId, unsigned int inputOrOutputId,
 
 
 //Setters
-void PhysicalSync::setParameter(unsigned int moduleId, unsigned int paramId, float paramValue, bool isNormalized, bool additive) {
-    ParamWidget *param = getParameter(moduleId, paramId);
-    if(param) {
+void PhysicalSync::setPotentiometer(unsigned int moduleId, unsigned int potentiometerId, float potentiometerValue, bool isNormalized, bool additive) {
+    ParamWidget *potentiometer = getPotentiometer(moduleId, potentiometerId);
+    if(potentiometer) {
         if(isNormalized) {
-            paramValue = paramValue * (param->maxValue - param->minValue);
+            potentiometerValue = potentiometerValue * (potentiometer->maxValue - potentiometer->minValue);
             if(!additive)
-                paramValue += param->minValue;
+                potentiometerValue += potentiometer->minValue;
         }
         if(additive)
-            paramValue += param->value;
-        param->setValue(paramValue);
+            potentiometerValue += potentiometer->value;
+        potentiometer->setValue(potentiometerValue);
     }
     else {
         std::stringstream stream;
         stream << "Module ";
         stream << moduleId;
-        stream << " parameter ";
-        stream << paramId;
+        stream << " potentiometer ";
+        stream << potentiometerId;
         stream << " not found.";
         logToOsc(stream.str());
     }
 }
-void PhysicalSync::resetParameter(unsigned int moduleId, unsigned int paramId) {
-    ParamWidget *param = getParameter(moduleId, paramId);
-    if(param) {
-        param->setValue(param->defaultValue);
+void PhysicalSync::setSwitch(unsigned int moduleId, unsigned int switchId, float switchValue) {
+    ParamWidget *button = getSwitch(moduleId, switchId);
+    if(button)
+        button->setValue((switchValue * (button->maxValue - button->minValue)) + button->minValue);
+    else {
+        std::stringstream stream;
+        stream << "Module ";
+        stream << moduleId;
+        stream << " switch ";
+        stream << switchId;
+        stream << " not found.";
+        logToOsc(stream.str());
+    }
+}
+void PhysicalSync::resetPotentiometer(unsigned int moduleId, unsigned int potentiometerId) {
+    ParamWidget *potentiometer = getPotentiometer(moduleId, potentiometerId);
+    if(potentiometer) {
+        potentiometer->setValue(potentiometer->defaultValue);
     }
     else {
         std::stringstream stream;
         stream << "Module ";
         stream << moduleId;
-        stream << "parameter ";
-        stream << paramId;
+        stream << "potentiometer ";
+        stream << potentiometerId;
         stream << " not found.";
         logToOsc(stream.str());
     }
@@ -607,17 +696,34 @@ void PhysicalSync::dumpLights(const char *address, bool inLine) {
         }
     }
 }
-void PhysicalSync::dumpParameters(const char *address) {
+void PhysicalSync::dumpPotentiometers(const char *address) {
     if(osc) {
         updateCache();
         osc->send(address, "start");
         for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
             ModuleWithId module = getModule(moduleId);
             if(module.widget) {
-                for(unsigned int paramId = 0 ; paramId < modules[moduleId].widget->module->params.size() ; paramId++) {
-                    ParamWidget *param = getParameter(moduleId, paramId);
-                    if(param)
-                        osc->send(address, mapToPotentiometer(moduleId, paramId), moduleId, paramId, param->box.getCenter(), param->value, (param->value - param->minValue) / (param->maxValue - param->minValue));
+                for(unsigned int potentiometerId = 0 ; potentiometerId < modules[moduleId].potentiometers.size() ; potentiometerId++) {
+                    ParamWidget *potentiometer = getPotentiometer(moduleId, potentiometerId);
+                    if(potentiometer)
+                        osc->send(address, mapToPotentiometer(moduleId, potentiometerId), moduleId, potentiometerId, potentiometer->box.getCenter(), potentiometer->value, (potentiometer->value - potentiometer->minValue) / (potentiometer->maxValue - potentiometer->minValue));
+                }
+            }
+        }
+        osc->send(address, "end");
+    }
+}
+void PhysicalSync::dumpSwitches(const char *address) {
+    if(osc) {
+        updateCache();
+        osc->send(address, "start");
+        for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
+            ModuleWithId module = getModule(moduleId);
+            if(module.widget) {
+                for(unsigned int switchId = 0 ; switchId < modules[moduleId].switches.size() ; switchId++) {
+                    ParamWidget *button = getSwitch(moduleId, switchId);
+                    if(button)
+                        osc->send(address, mapToSwitch(moduleId, switchId), moduleId, switchId, button->box.getCenter(), button->value, (button->value - button->minValue) / (button->maxValue - button->minValue));
                 }
             }
         }
@@ -657,7 +763,7 @@ void PhysicalSync::dumpModules(const char *address) {
         for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
             ModuleWithId module = getModule(moduleId);
             if(module.widget)
-                osc->send(address, moduleId, module.widget->model->slug, module.widget->model->name, module.widget->box.pos, module.widget->box.size, module.widget->module->inputs.size(), module.widget->module->outputs.size(), module.widget->module->params.size(), module.lights.size());
+                osc->send(address, moduleId, module.widget->model->slug, module.widget->model->name, module.widget->box.pos, module.widget->box.size, module.widget->module->inputs.size(), module.widget->module->outputs.size(), module.potentiometers.size(), module.switches.size(), module.lights.size());
         }
         osc->send(address, "end");
     }

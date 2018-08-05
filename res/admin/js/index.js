@@ -8,6 +8,7 @@ $(document).ready(function() {
 		  .add('icn_jack_input', 		'img/icn_jack_input.png')
 		  .add('icn_jack_output', 		'img/icn_jack_output.png')
 		  .add('icn_knob', 				'img/icn_knob.png')
+		  .add('icn_switch', 			'img/icn_switch.png')
 		  .add('icn_led', 				'img/icn_led.png');
 	loader.load((loader, resources) => {
 		cache.resources = resources;
@@ -16,7 +17,7 @@ $(document).ready(function() {
 		$.ajax("/arduino/Modiy/Modiy.ino").done(function(arduino) {
 			var arduinoCode = arduino.split("\n").clean("");
 			$.each(arduinoCode, function(index, codeLine) {
-				if((codeLine.indexOf("jackPinout[] = ") > 0) || (codeLine.indexOf("analogPinout[] = ") > 0) || (codeLine.indexOf("ledPinout[] = ") > 0)) {
+				if((codeLine.indexOf("jackPinout[] = ") > 0) || (codeLine.indexOf("analogPinout[] = ") > 0) || (codeLine.indexOf("ledPinout[] = ") > 0) || (codeLine.indexOf("switchPinout[] = ") > 0)) {
 					var codeLineValues = codeLine.split(" = ").clean("");
 					if(codeLineValues.length > 0) {
 						codeLineValues = codeLineValues[1].replaceAll(";", "").replaceAll("{", "").replaceAll("}", "").split(",").clean("");
@@ -28,6 +29,8 @@ $(document).ready(function() {
 							cache.arduino.jacks = codeLineValues;
 						else if(codeLine.indexOf("analogPinout[] = ") > 0)
 							cache.arduino.potentiometers = codeLineValues;
+						else if(codeLine.indexOf("switchPinout[] = ") > 0)
+							cache.arduino.switches = codeLineValues;
 						else if(codeLine.indexOf("ledPinout[] = ") > 0)
 							cache.arduino.leds = codeLineValues;
 					}
@@ -44,7 +47,7 @@ $(document).ready(function() {
 		
 			//LEDs refresh
 			setInterval(function() {
-				updateCache("refresh");
+				updateCache();
 			}, 1000);
 			
 			//Show pins
@@ -52,23 +55,21 @@ $(document).ready(function() {
 				if($(this).hasClass("checked"))
 					$(this).removeClass("checked").text("Show pin numbers");
 				else
-					$(this).addClass("checked").text("Show parameters ID")
+					$(this).addClass("checked").text("Show ID")
 				cache.showPins = $(this).hasClass("checked");
-				cache.force = true;
+				updateCache("force");
 			});
 			$("#showPins").trigger("click");
 
 			//Refresh test
 			$("#print").click(function() {
 				cache.print = !cache.print;
-				cache.force = true;
-				updateCache();
+				updateCache("force");
 				//return;
 				setTimeout(function() {
 					window.print();
 					cache.print = false;
-					cache.force = true;
-					updateCache();
+					updateCache("force");
 				}, 1000);
 			});
 			//$("#print").trigger("click");
@@ -80,9 +81,13 @@ $(document).ready(function() {
 
 
 //Cache update
-var cache = {print: false, showPins: true, force: false, toPx: 1/*4*133.4/380*/, arduino: {leds: [], jacks: [], potentiometers: []}, modules: []}, cacheTmp = {};
+var cache = {print: false, showPins: true, force: false, toPx: 1/*4*133.4/380*/, arduino: {leds: [], jacks: [], potentiometers: [], switches: []}, modules: []}, cacheTmp = {};
 //133.4mm = 380px (VCV)
 function updateCache(step) {
+	if(step == "force") {
+		cache.force = true;
+		step = undefined;
+	}
 	if(step == undefined) {
 		//Complete refresh with redrawing
 		cache.refresh = "complete";
@@ -95,9 +100,10 @@ function updateCache(step) {
 	}
 	else if(step == "end") {
 		var modulesSerializedTmp = JSON.stringify(cacheTmp.modules);
-		if((cache.force) || (cache.modulesSerialized != modulesSerializedTmp)) {
+		if((cache.refresh == "complete") && ((cache.force) || (cache.modulesSerialized != modulesSerializedTmp))) {
+			cache.refresh = "";
 			cache.force = false;
-			console.log("Modules refreshed");
+			console.log("Modules refreshed (" + cache.force + " / " + (cache.modulesSerialized != modulesSerializedTmp) + ")");
 			console.log(cache);
 			
 			//End of refresh
@@ -179,12 +185,14 @@ function updateCache(step) {
 				cache.partList = {
 					jacks: 			floor(jal.jacks / cache.arduino.jacks.length),
 					potentiometers: floor(jal.potentiometers / cache.arduino.potentiometers.length),
+					switches:       floor(jal.switches / cache.arduino.switches.length),
 					leds: 			floor(jal.leds / cache.arduino.leds.length),
 					audioJacks:      0
 				};
 				cache.partList.boards         = max(max(cache.partList.jacks, cache.partList.potentiometers), cache.partList.leds) + 1;
 				cache.partList.jacks          = jal.jacks;
 				cache.partList.potentiometers = jal.potentiometers;
+				cache.partList.switches       = jal.switches;
 				cache.partList.leds           = jal.leds;
 				cache.partList.wires          = (1*cache.partList.jacks + 3*cache.partList.potentiometers + 2*cache.partList.leds) + max(0,cache.partList.boards-1)*4;
 			
@@ -270,8 +278,8 @@ function updateCache(step) {
 					introText = module.name + " (" + module.slug + ")";
 				module.container.drawingText  = new PIXI.Text(introText, {fontFamily : "revilo san", fontSize: 10, fill : app.baseColors[module.wiring.board%3].stroke});
 				module.container.drawingText2 = new PIXI.Text(
-					module.jal.in  .jacks + "-" + module.jal.in  .potentiometers + "-" + module.jal.in  .leds + "\n" +
-					module.jal.size.jacks + "-" + module.jal.size.potentiometers + "-" + module.jal.size.leds
+					module.jal.in  .jacks + "-" + module.jal.in  .potentiometers + "-" + module.jal.in  .switches + "-" + module.jal.in  .leds + "\n" +
+					module.jal.size.jacks + "-" + module.jal.size.potentiometers + "-" + module.jal.size.switches + "-" + module.jal.size.leds
 					, {fontFamily : "Courier New", fontSize: 9, fill : app.baseColors[module.wiring.board%3].stroke});
 				module.container.drawingText .position.y = 3 + module.container.height / module.container.scale.y;
 				module.container.drawingText2.position.y = 3 + module.container.drawingText.position.y + module.container.drawingText.height;
@@ -295,7 +303,12 @@ function updateCache(step) {
 				});
 		
 				//Potentiometers
-				$.each(module.parameters, function(index, item) {
+				$.each(module.potentiometers, function(index, item) {
+					drawItem(module, item);
+				});
+		
+				//Switches
+				$.each(module.switches, function(index, item) {
 					drawItem(module, item);
 				});
 		
@@ -353,6 +366,12 @@ function drawItem(module, item) {
 		item.container.drawing = PIXI.Sprite.from(cache.resources.icn_knob.texture);
 		item.container.drawing.width = item.container.drawing.height = 40;
 		textOffset.y = -item.container.drawing.height * 0.62;
+	}
+	else if (item.type == "switch") {
+		textColor = palette.stroke;
+		item.container.drawing = PIXI.Sprite.from(cache.resources.icn_switch.texture);
+		item.container.drawing.width = item.container.drawing.height = 30;
+		textOffset.y = -item.container.drawing.height * 0.43;
 	}
 	else if((item.type == "jack_input") || (item.type == "jack_output") || (item.type == "jack_audio_input") || (item.type == "jack_audio_output")) {
 		if(item.type == "jack_input")
@@ -423,7 +442,7 @@ function websocketReception(message) {
 		else if(message[0] == "/dump/modules") {
 			if(message[1] == "start") {
 				cacheTmp.modules = [];
-				cacheTmp.jal = {jacks: 0, potentiometers: 0, leds: 0};
+				cacheTmp.jal = {jacks: 0, potentiometers: 0, switches: 0, leds: 0};
 			}
 			else if(message[1] == "end")
 				sendWebsockets("/dump/jacks");
@@ -436,23 +455,26 @@ function websocketReception(message) {
 					name: message[3],
 					pos:  {x:     mm(message[4]), y:      mm(message[5])},
 					size: {width: mm(message[6]), height: mm(message[7])},
-					nbInputs: 	  parseInt(message[8], 10),
-					nbOutputs: 	  parseInt(message[9], 10),
-					nbParameters: parseInt(message[10], 10),
-					nbLights: 	  parseInt(message[11], 10),
-					wiring:       {board: undefined, boards: {}},
-					inputs: 	  [], 
-					outputs: 	  [], 
-					parameters:	  [], 
-					lights:	      [], 
-					jal: 		  {}
+					nbInputs: 	      parseInt(message[8], 10),
+					nbOutputs: 	      parseInt(message[9], 10),
+					nbPotentiometers: parseInt(message[10], 10),
+					nbSwitches:       parseInt(message[11], 10),
+					nbLights: 	      parseInt(message[12], 10),
+					wiring:           {board: undefined, boards: {}},
+					inputs: 	      [], 
+					outputs: 	      [], 
+					potentiometers:	  [], 
+					switches:	      [], 
+					lights:	          [], 
+					jal: 		      {}
 				};
-				module.jal.size = {jacks: (module.nbInputs+module.nbOutputs), potentiometers: module.nbParameters, leds: module.nbLights};
+				module.jal.size = {jacks: (module.nbInputs+module.nbOutputs), potentiometers: module.nbPotentiometers, switches: module.nbSwitches, leds: module.nbLights};
 				module.jal.in   = JSON.parse(JSON.stringify(cacheTmp.jal));
 			
 				//Calculate jacks, potentiometers and LEDs quantities
 				cacheTmp.jal.jacks 		 	+= module.jal.size.jacks;
 				cacheTmp.jal.potentiometers += module.jal.size.potentiometers;
+				cacheTmp.jal.switches       += module.jal.size.switches;
 				cacheTmp.jal.leds  		 	+= module.jal.size.leds;
 
 				//Post-processing
@@ -473,10 +495,10 @@ function websocketReception(message) {
 					id:   	  		 parseInt(message[1], 10),
 					moduleId: 		 parseInt(message[2], 10),
 					inputOrOutputId: parseInt(message[3], 10),
-					pos:  	  {x: mm(message[4]), y: mm(message[5])},
-					active:   (parseInt(message[6], 10) > 0.5),
-					/*value: 	  parseFloat(message[7]),*/
-					isInput:  (parseInt(message[8], 10) > 0.5)
+					pos:  	  		{x: mm(message[4]), y: mm(message[5])},
+					active:   		(parseInt(message[6], 10) > 0.5),
+					/*value: 	     parseFloat(message[7]),*/
+					isInput:  		(parseInt(message[8], 10) > 0.5)
 				};
 
 				//Module reference
@@ -518,16 +540,16 @@ function websocketReception(message) {
 		else if(message[0] == "/dump/potentiometers") {
 			if(message[1] == "start") {}
 			else if(message[1] == "end")
-				sendWebsockets("/dump/leds");
+				sendWebsockets("/dump/switches");
 			else {
 				//OSC deserialization
 				var potentiometer = {
-					type: 	  "potentiometer",
-					id:   	  parseInt(message[1], 10),
-					moduleId: parseInt(message[2], 10),
-					paramId:  parseInt(message[3], 10),
-					pos:  	  {x: mm(message[4]), y: mm(message[5])},
-					/*value: 	  {absolute: parseFloat(message[6]), normalized: parseFloat(message[7])}*/
+					type: 	          "potentiometer",
+					id:   	          parseInt(message[1], 10),
+					moduleId:         parseInt(message[2], 10),
+					potentiometerId:  parseInt(message[3], 10),
+					pos:  	          {x: mm(message[4]), y: mm(message[5])},
+					/*value: 	      {absolute: parseFloat(message[6]), normalized: parseFloat(message[7])}*/
 				};
 
 				//Module reference
@@ -542,14 +564,43 @@ function websocketReception(message) {
 				module.wiring.boards[potentiometer.wiring.board]++;
 
 				//Add in container
-				module.parameters[potentiometer.paramId] = potentiometer;
+				module.potentiometers[potentiometer.potentiometerId] = potentiometer;
+			}
+		}
+		else if(message[0] == "/dump/switches") {
+			if(message[1] == "start") {}
+			else if(message[1] == "end")
+				sendWebsockets("/dump/leds");
+			else {
+				//OSC deserialization
+				var button = {
+					type: 	  "switch",
+					id:   	  parseInt(message[1], 10),
+					moduleId: parseInt(message[2], 10),
+					switchId: parseInt(message[3], 10),
+					pos:  	  {x: mm(message[4]), y: mm(message[5])},
+					/*value: 	  {absolute: parseFloat(message[6]), normalized: parseFloat(message[7])}*/
+				};
+
+				//Module reference
+				var module = cacheTmp.modules[button.moduleId];
+
+				//Wiring
+				button.wiring = {board: floor(button.id / cache.arduino.switches.length), pin: cache.arduino.switches[button.id % cache.arduino.switches.length]};
+				
+				//Calculate module board
+				if(module.wiring.boards[button.wiring.board] == undefined)
+					module.wiring.boards[button.wiring.board] = 0;
+				module.wiring.boards[button.wiring.board]++;
+
+				//Add in container
+				module.switches[button.switchId] = button;
 			}
 		}
 		else if(message[0] == "/dump/leds") {
 			if(message[1] == "start") {}
-			else if(message[1] == "end") {
+			else if(message[1] == "end")
 				updateCache("end");
-			}
 			else {
 				//OSC deserialization
 				var led = {
