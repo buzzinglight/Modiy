@@ -35,7 +35,8 @@ TODO
 
 
 ## OSC commands
-If you want to control VCV Rack from OSC (instead of Arduino), here are the main commands.
+If you want to control VCV Rack from OSC (instead of Arduino), here are the main messages to be sent of `57130` port.
+
 ### Potentiometers
 ```
 /potentiometer/set/absolute <potentiometerId> <abolsute value>
