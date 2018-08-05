@@ -31,11 +31,12 @@ make
 - Launch *VCV Rack* with an instance of *Modiy* plugin on your rack and refresh the webpage (you can launch it again in the menu of *Protocol Dispatcher* from the traybar icon)
 
 ## Wiring
-TODO
+Pin number for each potentiometers, switches or patching jacks can be found on the admin page of Modiy : right-click —> *Open webpage* then select *Show pin number* (selected by default). Then, wire components in this way :
+
 
 
 ## OSC commands
-If you want to control VCV Rack from OSC (instead of Arduino), here are the main messages to be sent on `57130` port. IDs of potentiometers, switches or patching jacks can be found on the admin page of Modiy (right-click —> *Open webpage* then select "Show IDs").
+If you want to control VCV Rack from OSC (instead of Arduino), here are the main messages to be sent on `57130` port. IDs of potentiometers, switches or patching jacks can be found on the admin page of Modiy : right-click —> *Open webpage* then select *Show IDs*.
 
 ### Potentiometers
 ```
