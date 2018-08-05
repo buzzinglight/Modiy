@@ -27,11 +27,10 @@ make
 ### Arduino source code
 - From the webpage opened by *Protocol Dispatcher*, download *Arduino source code* at the bottom of the page and upload it into an Arduino Mega board.
 - After uploading, quit Arduino and open *Settings* page from the traybar icon of *Protocol Dispatcher* and select the corresponding Arduino serial port in the list
-### VCV Rack integration
-- Launch *VCV Rack* with an instance of *Modiy* plugin on your rack and refresh the webpage (you can launch it again in the menu of *Protocol Dispatcher* from the traybar icon)
 
-## Wiring
-Pin number for each potentiometers, switches or patching jacks can be found on the admin page of Modiy : right-click —> *Open webpage* then select *Show pin number* (selected by default). Wire components in this way (and add as many Arduino MEGA as needed by Modiy) :
+### Wiring
+- Launch *VCV Rack* with an instance of *Modiy* plugin on your rack (*Protocol Dispatcher* will be automaticaly launched if you closed it).
+- Pin number for each potentiometers, switches or patching jacks can be found on the admin page of Modiy : right-click —> *Open webpage* then select *Show pin number* (selected by default). Wire components in this way (and add as many Arduino MEGA as needed by Modiy) :
 
 ![alt text](https://github.com/buzzinglight/Modiy/raw/master/res/arduino/Wiring%20help%20-%20wiring.png "Wiring schematic")
 
