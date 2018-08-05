@@ -32,3 +32,27 @@ make
 
 ## Wiring
 TODO
+
+
+## OSC commands
+If you want to control VCV Rack from OSC (instead of Arduino), here are the main commands.
+### Potentiometers
+```
+/potentiometer/set/absolute <potentiometerId> <abolsute value>
+/potentiometer/set/norm <potentiometerId> <value between 0 and 1>
+/potentiometer/add/absolute <potentiometerId> <absolute value to be added>
+/potentiometer/add/norm <potentiometerId> <value between -1 and 1 to be added>
+/potentiometer/reset <potentiometerId>
+```
+
+### Switches
+```
+/switch <switchId> <0|1 : switch off or on>
+```
+
+### Wires
+```
+/link <jackId source> <jackId destination> <0|1 : remove or add a wire>
+/link/clear
+```
+
