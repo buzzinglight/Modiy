@@ -2,7 +2,7 @@
 var app;
 $(document).ready(function() {
 	//Cache of images
-	var loader = PIXI.Loader.shared;
+	var loader = PIXI.loaders.shared;
 	loader.add('icn_jack_audio_input',  'img/icn_jack_audio_input.png')
 		  .add('icn_jack_audio_output', 'img/icn_jack_audio_output.png')
 		  .add('icn_jack_input', 		'img/icn_jack_input.png')
@@ -115,11 +115,10 @@ function updateCache(step) {
 			
 			//Canvas for drawing
 			if(app == undefined) {
-				app = new PIXI.Application(1, 1, {transparent: true, resolution: window.devicePixelRatio, autoDensity: true});
+				app = new PIXI.Application(1, 1, {transparent: true, resolution: window.devicePixelRatio});
 				$("#canvas").append(app.view);
 				app.container = new PIXI.Container();
 				app.stage.addChild(app.container);
-				app.ticker.stop();
 			}
 		
 			//Clear/clean container and children
@@ -218,6 +217,7 @@ function updateCache(step) {
 				$("#nbJacks>span")         .text("× " + cache.partList.jacks);
 				$("#nbAudioJacks>span")    .text("× " + cache.partList.audioJacks);
 				$("#nbPotentiometers>span").text("× " + cache.partList.potentiometers);
+				$("#nbSwitches>span")      .text("× " + cache.partList.switches);
 				$("#nbLEDs>span")          .text("× " + cache.partList.leds);
 				$("#nbWires>span")         .text("× " + cache.partList.wires);
 				
@@ -236,8 +236,9 @@ function updateCache(step) {
 				$("#canvas").removeClass("image");
 		
 			//Module
-			var rack = {pos: {x: 9999999, y: 9999999}, paper: {current: {x: 0, y: 0}, size: {width: 210*380/133, height: 297*380/133}}, size: {width: 0, height: 0}, scale: 1};
+			var rack = {pos: {x: 9999999, y: 9999999}, paper: {current: {x: 0, y: 0}, size: {width: (210 - 0)*380/133, height: (297 - 0)*380/133}}, size: {width: 0, height: 0}, scale: 1};
 			//133mm = 380px (VCV)
+			cache.items = [];		
 			$.each(cache.modules, function(index, module) {
 				//Check if module can fit the space (print only)
 				if(cache.print) {
@@ -267,7 +268,7 @@ function updateCache(step) {
 			
 				//White rectangle for module
 				module.container.drawing = new PIXI.Graphics();
-				module.container.drawing.alpha = 0.5;
+				module.container.drawing.alpha = module.container.drawing.alphaBefore = 0.5;
 				module.container.drawing.lineStyle(1, app.baseColors[module.wiring.board%3].stroke);
 				module.container.drawing.drawRect(0, 0, module.size.width, module.size.height);
 				module.container.addChild(module.container.drawing);
@@ -283,10 +284,13 @@ function updateCache(step) {
 					, {fontFamily : "Courier New", fontSize: 9, fill : app.baseColors[module.wiring.board%3].stroke});
 				module.container.drawingText .position.y = 3 + module.container.height / module.container.scale.y;
 				module.container.drawingText2.position.y = 3 + module.container.drawingText.position.y + module.container.drawingText.height;
-				module.container.drawingText2.alpha = 0.5;
+				module.container.drawingText2.alpha = module.container.drawingText2.alphaBefore = 0.5;
 				module.container.addChild(module.container.drawingText);
 				module.container.addChild(module.container.drawingText2);
-		
+				cache.items.push(module.container.drawing);
+				cache.items.push(module.container.drawingText);
+				cache.items.push(module.container.drawingText2);
+				
 				//Input jacks
 				$.each(module.inputs, function(index, item) {
 					drawItem(module, item);
@@ -341,9 +345,9 @@ function updateCache(step) {
 			app.container.position.x = -rack.pos.x + margins;
 			app.container.position.y = -rack.pos.y + margins;
 			app.renderer.resize(rack.size.width + app.container.position.x + margins, rack.size.height + app.container.position.y + margins);
-			app.ticker.update();
 			$("#canvasWaiting").hide();
 			$("#canvas").css({display: 'inline-block'});
+			$(app.view).css({width: app.renderer.width/app.renderer.resolution, height: app.renderer.height/app.renderer.resolution});
 		}
 	}
 }
@@ -353,6 +357,8 @@ function updateCache(step) {
 function drawItem(module, item) {
 	//Graphical container
 	item.container = new PIXI.Container();
+	item.container.position.x = item.pos.x;
+	item.container.position.y = item.pos.y;
 	module.container.addChild(item.container);
 	
 	var palette = app.baseColors[item.wiring.board%3];
@@ -370,8 +376,8 @@ function drawItem(module, item) {
 	else if (item.type == "switch") {
 		textColor = palette.stroke;
 		item.container.drawing = PIXI.Sprite.from(cache.resources.icn_switch.texture);
-		item.container.drawing.width = item.container.drawing.height = 30;
-		textOffset.y = -item.container.drawing.height * 0.43;
+		item.container.drawing.width = item.container.drawing.height = 25;
+		textOffset.y = -item.container.drawing.height * 0.35;
 	}
 	else if((item.type == "jack_input") || (item.type == "jack_output") || (item.type == "jack_audio_input") || (item.type == "jack_audio_output")) {
 		if(item.type == "jack_input")
@@ -391,16 +397,18 @@ function drawItem(module, item) {
 	}
 	else if(item.type == "led") {
 		item.container.drawing = PIXI.Sprite.from(cache.resources.icn_led.texture);
-		textSize = 7;
-		item.container.drawing.width = item.container.drawing.height = 10;
+		textSize = 8;
+		item.container.drawing.width = item.container.drawing.height = 12;
 		textOffset = {x: 0, y: -item.container.drawing.height * 0.9};
 	}
 	
+	
 	//Draw stuff
 	item.container.drawing.tint = color;
-	item.container.drawing.position.x = item.pos.x - item.container.drawing.width /2;
-	item.container.drawing.position.y = item.pos.y - item.container.drawing.height/2;
+	item.container.drawing.position.x = -item.container.drawing.width /2;
+	item.container.drawing.position.y = -item.container.drawing.height/2;
 	item.container.addChild(item.container.drawing);
+	item.container.drawing.item = item;
 	
 	//IDs
 	var mainID, secondId
@@ -415,16 +423,39 @@ function drawItem(module, item) {
 	
 	//Add main ID
 	item.container.drawingText = new PIXI.Text(mainID, {fontFamily : "OpenSans", fontWeight: 500, fill : textColor, fontSize: textSize});
-	item.container.drawingText.position.x = item.pos.x - item.container.drawingText.width/2 + textOffset.x;
-	item.container.drawingText.position.y = item.pos.y + item.container.drawing.height/2 + textOffset.y;
+	item.container.drawingText.position.x = -item.container.drawingText.width/2 + textOffset.x;
+	item.container.drawingText.position.y =  item.container.drawing.height/2 + textOffset.y;
 	item.container.addChild(item.container.drawingText);
 
 	//Add wiring ID
 	item.container.drawingText2 = new PIXI.Text(secondId, {fontFamily : module.container.drawingText.style.fontFamily, fontWeight: 200, fontSize: max(7, textSize-3), fill : palette.stroke});
-	item.container.drawingText2.position.x = item.pos.x - item.container.drawingText2.width/2;
-	item.container.drawingText2.position.y = item.pos.y + item.container.drawing.height/2 + 1;
+	item.container.drawingText2.position.x = -item.container.drawingText2.width/2;
+	item.container.drawingText2.position.y =  item.container.drawing.height/2 + 1;
 	item.container.drawingText2.alpha = 0.75;
 	item.container.addChild(item.container.drawingText2);
+	
+	//Events
+	cache.items.push(item.container);
+	item.container.drawing.interactive = true;
+	item.container.drawing.buttonMode = true;
+	item.container.drawing.on('pointerdown', function() {
+		var clickedItem = this.item.container;
+		$.each(cache.items, function(index, item) {
+			if(item != clickedItem)
+				item.alpha = 0.1;
+			else
+				item.scale.x = item.scale.y = 3;
+		});
+	});
+	item.container.drawing.on('pointerup', function() {
+		$.each(cache.items, function(index, item) {
+			if(item.alphaBefore != undefined)
+				item.alpha = item.alphaBefore;
+			else
+				item.alpha = 1;
+			item.scale.x = item.scale.y = 1;
+		});
+	});
 }
 
 //Websockets reception

@@ -1,4 +1,5 @@
 //HardwareSerial.h -> #define SERIAL_RX_BUFFER_SIZE 256
+#include <ResponsiveAnalogRead.h>
 
 //Jack - Analog - LED - Switches (JALS)
 struct JALS {
@@ -30,16 +31,7 @@ uint16_t **switchValues;
 
 //Potentiometers = Analog
 const uint8_t analogPinout[] = {A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15};
-uint16_t **analogValues;
-struct RunningAverage {
-  uint8_t powerOfTwo = 4; //Only edit this line —> 2^4 = 16 values
-
-  uint16_t **values;
-  uint8_t number = 0;
-  uint8_t index = 0;
-};
-RunningAverage ra;
-
+ResponsiveAnalogRead *analogValues;
 
 //PWM = LEDs
 const uint8_t ledPinout[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 44, 45, 46};
@@ -66,7 +58,6 @@ void setup() {
   jals.count[jals.Analog] = sizeof(analogPinout);
   jals.count[jals.LED]    = sizeof(ledPinout);
   jals.count[jals.Switch] = sizeof(switchPinout);
-  ra.number = 1 << ra.powerOfTwo;
 
   //Print some debug infos
   Serial.print("JALS_O ");
@@ -89,15 +80,9 @@ void setup() {
 
   Serial.print("Serial Buffer\t");
   Serial.println(SERIAL_RX_BUFFER_SIZE);
-  Serial.print("Running average\t");
-  Serial.println(ra.number);
 
   //Allocate arrays/matrix
   alloc();
-
-  //Analog running average fill
-  for (uint8_t raIndex = 0 ; raIndex < ra.number ; raIndex++)
-    processAnalog(false);
 
   //LED refresh counter
   lastLEDAsk = millis();
@@ -113,7 +98,7 @@ void loop() {
   if (!isDumping) {
     processJack();
     processSwitch();
-    processAnalog(true);
+    processAnalog();
   }
   if (firstLoop)
     Serial.println("DUMP_END");
@@ -152,20 +137,9 @@ void alloc() {
   }
 
   //Initialize analog values storage
-  analogValues = new uint16_t*[2];
-  for (uint8_t cycle = 0 ; cycle < 2 ; cycle++) {
-    analogValues[cycle] = new uint16_t[jals.count[jals.Analog]];
-    for (uint8_t analog = 0 ; analog < jals.count[jals.Analog] ; analog++)
-      analogValues[cycle][analog] = 0;
-  }
-
-  //Initialize analog running average
-  ra.values = new uint16_t*[jals.count[jals.Analog]];
-  for (uint8_t analog = 0 ; analog < jals.count[jals.Analog] ; analog++) {
-    ra.values[analog] = new uint16_t[ra.number];
-    for (uint8_t raIndex = 0 ; raIndex < ra.number ; raIndex++)
-      ra.values[analog][raIndex] = 0;
-  }
+  analogValues = new ResponsiveAnalogRead[jals.count[jals.Analog]];
+  for (uint8_t analog = 0 ; analog < jals.count[jals.Analog] ; analog++)
+    analogValues[analog] = ResponsiveAnalogRead(analogPinout[analog], true);
 
   //Initialize switches values storage
   switchValues = new uint16_t*[2];
@@ -219,29 +193,15 @@ void processJack() {
 }
 
 //Read all analog values
-void processAnalog(bool doSend) {
-  //Shift running average value
-  ra.index = (ra.index + 1) % ra.number;
-  uint16_t total = 0;
-
+void processAnalog() {
   //Browse all analog inputs
   for (uint8_t analog = 0 ; analog < jals.count[jals.Analog] ; analog++) {
     //Read value
-    ra.values[analog][ra.index] = analogRead(analogPinout[analog]);
+    analogValues[analog].update();
 
-    //Total of values
-    total = 0;
-    for (uint8_t raIndex = 0 ; raIndex < ra.number ; raIndex++)
-      total += ra.values[analog][raIndex];
-
-    if (doSend) {
-      //Running average value
-      analogValues[cycle][analog] = total >> ra.powerOfTwo;
-
-      //Send on serial port on change
-      if (analogValues[cycleCheck][analog] != analogValues[cycle][analog])
-        sendAnalog(analog, analogValues[cycle][analog]);
-    }
+    //Send on serial port on change
+    if (analogValues[analog].hasChanged())
+      sendAnalog(analog, analogValues[analog].getValue());
   }
 }
 
@@ -375,7 +335,7 @@ void serialEvent1() {
         sendAnalog(jals.count[jals.Analog] + serialInput[sI][1].toInt(), serialInput[sI][2].toInt());
       //Switch message reception
       else if ((serialInputDataIndex[sI] == 2) && (serialInput[sI][0] == "S"))
-        sendAnalog(jals.count[jals.Switch] + serialInput[sI][1].toInt(), serialInput[sI][2].toInt());
+        sendSwitch(jals.count[jals.Switch] + serialInput[sI][1].toInt(), serialInput[sI][2].toInt());
       //Digital message reception
       else if ((serialInputDataIndex[sI] == 3) && (serialInput[sI][0] == "J"))
         sendJack(jals.count[jals.Jack] + serialInput[sI][1].toInt(), jals.count[jals.Jack] + serialInput[sI][2].toInt(), serialInput[sI][3].toInt());
