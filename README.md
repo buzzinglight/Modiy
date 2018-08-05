@@ -33,7 +33,10 @@ make
 ## Wiring
 Pin number for each potentiometers, switches or patching jacks can be found on the admin page of Modiy : right-click —> *Open webpage* then select *Show pin number* (selected by default). Then, wire components in this way :
 
+![alt text](https://github.com/buzzinglight/Modiy/raw/master/res/arduino/Wiring%20help%20-%20wiring.png "Wiring schematic")
 
+
+![alt text](https://github.com/buzzinglight/Modiy/raw/master/res/arduino/Wiring%20help%20-%20schematic.png "Electronic schematic")
 
 ## OSC commands
 If you want to control VCV Rack from OSC (instead of Arduino), here are the main messages to be sent on `57130` port. IDs of potentiometers, switches or patching jacks can be found on the admin page of Modiy : right-click —> *Open webpage* then select *Show IDs*.
