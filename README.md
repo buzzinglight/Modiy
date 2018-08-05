@@ -32,3 +32,28 @@ make
 
 ## Wiring
 TODO
+
+
+## OSC commands
+If you want to control VCV Rack from OSC (instead of Arduino), here are the main messages to be sent on `57130` port. IDs of potentiometers, switches or patching jacks can be found on the admin page of Modiy (right-click —> *Open webpage* then select "Show IDs").
+
+### Potentiometers
+```
+/potentiometer/set/absolute <potentiometerId> <abolsute value>
+/potentiometer/set/norm <potentiometerId> <value between 0 and 1>
+/potentiometer/add/absolute <potentiometerId> <absolute value to be added>
+/potentiometer/add/norm <potentiometerId> <value between -1 and 1 to be added>
+/potentiometer/reset <potentiometerId>
+```
+
+### Switches
+```
+/switch <switchId> <0|1 : switch off or on>
+```
+
+### Wires
+```
+/link <jackId source> <jackId destination> <0|1 : remove or add a wire>
+/link/clear
+```
+
