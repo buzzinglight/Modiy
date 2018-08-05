@@ -110,9 +110,9 @@ void OSCManagement::ProcessMessage(const osc::ReceivedMessage& m, const IpEndpoi
         else if(std::strcmp(m.AddressPattern(), "/dump/jacks") == 0)
             oscRemote->dumpJacks(m.AddressPattern());
         else if(std::strcmp(m.AddressPattern(), "/dump/leds") == 0)
-            oscRemote->dumpLights(m.AddressPattern());
+            oscRemote->dumpLEDs(m.AddressPattern());
         else if(std::strcmp(m.AddressPattern(), "/L") == 0)
-            oscRemote->dumpLights("/serial", true);
+            oscRemote->dumpLEDs("/serial", true);
 
     } catch(osc::Exception &e) {
         warn("Erreur %s / %s", m.AddressPattern(), e.what());
@@ -145,11 +145,11 @@ void OSCManagement::send(const char *address, int valueIndex, unsigned int modul
     packet << osc::EndMessage;
     transmitSocket.Send(packet.Data(), packet.Size());
 }
-void OSCManagement::send(const char *address, unsigned int moduleId, std::string slug, std::string name, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbPotentiometers, unsigned int nbSwitches, unsigned int nbLights) {
+void OSCManagement::send(const char *address, unsigned int moduleId, std::string slug, std::string name, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbPotentiometers, unsigned int nbSwitches, unsigned int nbLEDs) {
     UdpTransmitSocket transmitSocket(IpEndpointName(dispatcherIp, dispatcherPort));
     osc::OutboundPacketStream packet(buffer, 1024);
 
-    packet << osc::BeginMessage(address) << (int)moduleId << slug.c_str() << name.c_str() << position.x << position.y << size.x << size.y  << (int)nbInputs << (int)nbOutputs << (int)nbPotentiometers << (int)nbSwitches << (int)nbLights << osc::EndMessage;
+    packet << osc::BeginMessage(address) << (int)moduleId << slug.c_str() << name.c_str() << position.x << position.y << size.x << size.y  << (int)nbInputs << (int)nbOutputs << (int)nbPotentiometers << (int)nbSwitches << (int)nbLEDs << osc::EndMessage;
     transmitSocket.Send(packet.Data(), packet.Size());
 }
 void OSCManagement::send(const char *address, float value) {

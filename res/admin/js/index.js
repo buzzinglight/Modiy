@@ -55,7 +55,7 @@ $(document).ready(function() {
 				if($(this).hasClass("checked"))
 					$(this).removeClass("checked").text("Show pin numbers");
 				else
-					$(this).addClass("checked").text("Show ID")
+					$(this).addClass("checked").text("Show IDs")
 				cache.showPins = $(this).hasClass("checked");
 				updateCache("force");
 			});
@@ -444,7 +444,7 @@ function drawItem(module, item) {
 			if(item != clickedItem)
 				item.alpha = 0.1;
 			else
-				item.scale.x = item.scale.y = 3;
+				item.scale.x = item.scale.y = 2;
 		});
 	});
 	item.container.drawing.on('pointerup', function() {

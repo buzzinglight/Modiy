@@ -17,26 +17,39 @@
 #include <algorithm>
 
 //Classes needed for module caching
-class LightWithWidget {
+class LED {
 public:
     Light light;
     MultiLightWidget *widget = NULL;
 };
-class ModuleWithId {
+class JackInput {
 public:
-    ModuleWidget *widget = NULL;
-    std::vector<LightWithWidget> lights;
-    std::vector<ParamWidget*> potentiometers, switches;
-    int moduleId = -1;
+    Input input;
+    Port *port = NULL;
 };
-class WireWithId {
+class JackOutput {
+public:
+    Output output;
+    Port *port = NULL;
+};
+
+class JackWire {
 public:
     WireWidget *widget = NULL;
     int inputModuleId  = -1;
     int outputModuleId = -1;
 };
+class ModuleWithId {
+public:
+    ModuleWidget *widget = NULL;
+    std::vector<LED> leds;
+    std::vector<ParamWidget*> potentiometers, switches;
+    std::vector<JackInput> inputs;
+    std::vector<JackOutput> outputs;
+    int moduleId = -1;
+};
 
-//LED light
+//LED Widget variable helper
 class LEDvars {
 public:
     float value = 0, valueRounded = 0, valueRoundedOld = -1;
@@ -45,10 +58,19 @@ public:
 };
 
 //Menu item
-struct PhysicalSyncMenu : MenuItem {
+struct PhysicalSync;
+struct PhysicalSyncOSCMenu : MenuItem {
 public:
-    OSCRemote *oscRemote;
+    PhysicalSync *physicalSync;
     const char *oscMessage;
+
+public:
+    void onAction(EventAction &e) override;
+};
+struct PhysicalSyncAudioMenu : MenuItem {
+public:
+    PhysicalSync *physicalSync;
+    int nbChannels;
 
 public:
     void onAction(EventAction &e) override;
@@ -70,8 +92,8 @@ public:
         NUM_OUTPUTS
     };
     enum LightIds {
-        OSC_LIGHT_INT,
-        OSC_LIGHT_EXT,
+        OSC_LED_INT,
+        OSC_LED_EXT,
         NUM_LIGHTS
     };
 
@@ -95,11 +117,16 @@ public:
 
 public:
     //Widgets
-    MultiLightWidget *oscLightInt = NULL, *oscLightExt = NULL;
+    MultiLightWidget *oscLEDInt = NULL, *oscLEDExt = NULL;
     //Audio interface
     AudioInterfaceIO audioIO;
     //OSC manager
     OSCManagement *osc = NULL;
+    //Audio channels + fake plugs
+    std::vector<SVGWidget*> inputComponents, outputComponents;
+    ModuleWidget *widget;
+    void setChannels(int nbChannels);
+    inline unsigned int getChannels() { return currentNbChannels; }
 
 private:
     //Audio
@@ -107,6 +134,7 @@ private:
     SampleRateConverter<AUDIO_OUTPUTS>         outputSrc;
     DoubleRingBuffer<Frame<AUDIO_INPUTS>, 16>  inputBuffer;
     DoubleRingBuffer<Frame<AUDIO_OUTPUTS>, 16> outputBuffer;
+    unsigned int currentNbChannels = min(AUDIO_INPUTS, AUDIO_OUTPUTS);
 
     //LED variables
     LEDvars ledStatusInt, pingLED;
@@ -122,18 +150,18 @@ private:
 
     //Cache management
     std::vector<ModuleWithId> modules;
-    std::vector<WireWithId> wires;
+    std::vector<JackWire> wires;
     bool updateCacheNeeded = true;
     void updateCache(bool force = false);
 
     //Getters
-    Port*           getInputPort (unsigned int moduleId, unsigned int inputId);
-    Port*           getOutputPort(unsigned int moduleId, unsigned int outputId);
-    ParamWidget*    getPotentiometer(unsigned int moduleId, unsigned int potentiometerId);
-    ParamWidget*    getSwitch       (unsigned int moduleId, unsigned int switchId);
-    LightWithWidget getLight     (unsigned int moduleId, unsigned int lightId);
-    ModuleWithId    getModule    (unsigned int moduleId);
-    WireWithId      getWire      (unsigned int inputModuleId, unsigned int inputPortId, unsigned int outputModuleId, unsigned int outputPortId);
+    JackInput    getInputPort    (unsigned int moduleId, unsigned int inputId);
+    JackOutput   getOutputPort   (unsigned int moduleId, unsigned int outputId);
+    ParamWidget* getPotentiometer(unsigned int moduleId, unsigned int potentiometerId);
+    ParamWidget* getSwitch       (unsigned int moduleId, unsigned int switchId);
+    LED          getLED          (unsigned int moduleId, unsigned int ledId);
+    ModuleWithId getModule       (unsigned int moduleId);
+    JackWire     getWire         (unsigned int inputModuleId, unsigned int inputPortId, unsigned int outputModuleId, unsigned int outputPortId);
 
 //OSC Remote methods
 public:
@@ -151,10 +179,10 @@ public:
     int  mapToSwitch(unsigned int moduleId, unsigned int switchId) override;
     bool mapFromJack (unsigned int index, int *moduleId, int *inputOrOutputId, bool *isInput) override;
     int  mapToJack(unsigned int moduleId, unsigned int inputOrOutputId, bool isInput) override;
-    int  mapToLED(unsigned int moduleId, unsigned int lightId) override;
+    int  mapToLED(unsigned int moduleId, unsigned int ledId) override;
 
     //Dump of data
-    void dumpLights        (const char *address, bool inLine = false) override;
+    void dumpLEDs        (const char *address, bool inLine = false) override;
     void dumpModules       (const char *address) override;
     void dumpPotentiometers(const char *address) override;
     void dumpSwitches      (const char *address) override;
