@@ -35,7 +35,7 @@ TODO
 
 
 ## OSC commands
-If you want to control VCV Rack from OSC (instead of Arduino), here are the main messages to be sent on `57130` port.
+If you want to control VCV Rack from OSC (instead of Arduino), here are the main messages to be sent on `57130` port. IDs of potentiometers, switches or patching jacks can be found on the admin page of Modiy (right-click —> *Open webpage* then select "Show IDs").
 
 ### Potentiometers
 ```
