@@ -138,9 +138,9 @@ private:
 
     //LED variables
     LEDvars ledStatusInt, pingLED;
-    std::string protocolDispatcherPath;
-    bool isProtocolDispatcherFound = false, isProtocolDispatcherTalking = false;
-    int isProtocolDispatcherTalkingCounter = 0;
+    std::string rtBrokerPath;
+    bool rtBrokerFound = false, isRTBrokerTalking = false;
+    int isRTBrokerTalkingCounter = 0;
 
     //OSC listener and sender
     bool oscServerJustStart = false;

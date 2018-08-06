@@ -49,13 +49,13 @@ public:
 //OSC Management
 class OSCManagement : public osc::OscPacketListener {
 public:
-    OSCManagement(OSCRemote *_oscRemote, std::string _dispatcherIp = "127.0.0.1", int _dispatcherPort = 4001);
+    OSCManagement(OSCRemote *_oscRemote, std::string _rtBrokerIp = "127.0.0.1", int _rtBrokerPort = 4001);
 
 private:
     char buffer[1024];
     OSCRemote *oscRemote;
-    const char* dispatcherIp;
-    int dispatcherPort;
+    const char* rtBrokerIp;
+    int rtBrokerPort;
 
 public:
     void send(const char *address, std::string message);

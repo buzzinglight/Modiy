@@ -5,4 +5,6 @@ build/*
 *.dylib
 *.so
 *.dll
-res/Protocol Dispatcher.app/*
+res/Realtime Message Broker.app/*
+res/Realtime Message Broker.exe/*
+res/RTBroker

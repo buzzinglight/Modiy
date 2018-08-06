@@ -231,23 +231,23 @@ void PhysicalSync::step() {
     //End of startup, after OSC creation, one time only
     if((osc) && (oscServerJustStart)) {
         oscServerJustStart = false;
-        isProtocolDispatcherFound = false;
+        rtBrokerFound = false;
 
-        //Current directory and Protocol Dispatcher path
+        //Current directory and realtime message broker path
 #ifdef ARCH_MAC
-        protocolDispatcherPath = assetPlugin(plugin, "res/Protocol Dispatcher.app/Contents/MacOS/Protocol Dispatcher");
+        rtBrokerPath = assetPlugin(plugin, "res/Realtime Message Broker.app/Contents/MacOS/Realtime Message Broker");
 #endif
 #ifdef ARCH_WIN
-        protocolDispatcherPath = assetPlugin(plugin, "res/ProtocolDispatcher.exe");
+        rtBrokerPath = assetPlugin(plugin, "res/Realtime Message Broker.exe");
 #endif
 #ifdef ARCH_LIN
-        protocolDispatcherPath = assetPlugin(plugin, "res/ProtocolDispatcher");
+        rtBrokerPath = assetPlugin(plugin, "res/RTBroker");
 #endif
-        info("Checks if protocol dispatcher app is present at %s", protocolDispatcherPath.c_str());
-        if(FILE *file = fopen(protocolDispatcherPath.c_str(), "r")) {
-            //Protocol Dispatcher is OK
+        info("Checks if realtime message broker is present at %s", rtBrokerPath.c_str());
+        if(FILE *file = fopen(rtBrokerPath.c_str(), "r")) {
+            //Realtime message broker is OK
             fclose(file);
-            isProtocolDispatcherFound = true;
+            rtBrokerFound = true;
         }
 
         //LED visibility
@@ -265,24 +265,24 @@ void PhysicalSync::step() {
 
         //LED status
         float ledStatusIntDelta = deltaTime * 2;
-        if(!isProtocolDispatcherFound)
+        if(!rtBrokerFound)
             ledStatusIntDelta = -1;
-        else if(!isProtocolDispatcherTalking)
+        else if(!isRTBrokerTalking)
             ledStatusIntDelta = deltaTime / 4;
         if(ledStatusInt.blink(ledStatusIntDelta)) {
             osc->send("/pulse", ledStatusInt.valueRounded);
 
-            //Opens Procotol Dispatcher if needed
-            if(isProtocolDispatcherFound) {
-                if(!isProtocolDispatcherTalking)
-                    isProtocolDispatcherTalkingCounter++;
-                isProtocolDispatcherTalking = false;
+            //Opens realtime message broker if needed
+            if(rtBrokerFound) {
+                if(!isRTBrokerTalking)
+                    isRTBrokerTalkingCounter++;
+                isRTBrokerTalking = false;
 
-                if(isProtocolDispatcherTalkingCounter > 3) {
-                    isProtocolDispatcherTalkingCounter = -5;
-                    info("Trying to start protocol dispatcher app %s…", protocolDispatcherPath.c_str());
+                if(isRTBrokerTalkingCounter > 3) {
+                    isRTBrokerTalkingCounter = -5;
+                    info("Trying to start realtime message broker %s…", rtBrokerPath.c_str());
 
-                    TinyProcessLib::Process process("\"" + protocolDispatcherPath + "\"");
+                    TinyProcessLib::Process process("\"" + rtBrokerPath + "\"");
                 }
             }
         }
@@ -806,8 +806,8 @@ void PhysicalSync::send(const char *message) {
         osc->send(message);
 }
 void PhysicalSync::pongReceived() {
-    isProtocolDispatcherTalking = true;
-    isProtocolDispatcherTalkingCounter = 0;
+    isRTBrokerTalking = true;
+    isRTBrokerTalkingCounter = 0;
 }
 
 
@@ -892,19 +892,19 @@ void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
         //Settings page
         PhysicalSyncOSCMenu *pd_openSettings = MenuItem::create<PhysicalSyncOSCMenu>("Serial port settings");
         pd_openSettings->physicalSync = physicalSync;
-        pd_openSettings->oscMessage = "/protocoldispatcher/opensettings";
+        pd_openSettings->oscMessage = "/rtbroker/opensettings";
         menu->addChild(pd_openSettings);
 
         //Network page
         PhysicalSyncOSCMenu *pd_openNetwork = MenuItem::create<PhysicalSyncOSCMenu>("Network system settings");
         pd_openNetwork->physicalSync = physicalSync;
-        pd_openNetwork->oscMessage = "/protocoldispatcher/opennetwork";
+        pd_openNetwork->oscMessage = "/rtbroker/opennetwork";
         menu->addChild(pd_openNetwork);
 
         //Webpage page
         PhysicalSyncOSCMenu *pd_openWebpage = MenuItem::create<PhysicalSyncOSCMenu>("Open webpage");
         pd_openWebpage->physicalSync = physicalSync;
-        pd_openWebpage->oscMessage = "/protocoldispatcher/openwebpage";
+        pd_openWebpage->oscMessage = "/rtbroker/openwebpage";
         menu->addChild(pd_openWebpage);
     }
 

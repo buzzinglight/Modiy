@@ -1,9 +1,9 @@
 #include "OSCManagement.hpp"
 
-OSCManagement::OSCManagement(OSCRemote *_oscRemote, std::string _dispatcherIp, int _dispatcherPort) {
+OSCManagement::OSCManagement(OSCRemote *_oscRemote, std::string _rtBrokerIp, int _rtBrokerPort) {
     oscRemote = _oscRemote;
-    dispatcherIp   = _dispatcherIp.c_str();
-    dispatcherPort = _dispatcherPort;
+    rtBrokerIp   = _rtBrokerIp.c_str();
+    rtBrokerPort = _rtBrokerPort;
 }
 
 //OSC message processing
@@ -129,14 +129,14 @@ float OSCManagement::asNumber(const osc::ReceivedMessage::const_iterator &arg) c
 
 //OSC send
 void OSCManagement::send(const char *address, std::string message) {
-    UdpTransmitSocket transmitSocket(IpEndpointName(dispatcherIp, dispatcherPort));
+    UdpTransmitSocket transmitSocket(IpEndpointName(rtBrokerIp, rtBrokerPort));
     osc::OutboundPacketStream packet(buffer, 1024);
 
     packet << osc::BeginMessage(address) << message.c_str() << osc::EndMessage;
     transmitSocket.Send(packet.Data(), packet.Size());
 }
 void OSCManagement::send(const char *address, int valueIndex, unsigned int moduleId, unsigned int valueId, const Vec &position, float valueAbsolute, float valueNormalized, int extraInfo) {
-    UdpTransmitSocket transmitSocket(IpEndpointName(dispatcherIp, dispatcherPort));
+    UdpTransmitSocket transmitSocket(IpEndpointName(rtBrokerIp, rtBrokerPort));
     osc::OutboundPacketStream packet(buffer, 1024);
 
     packet << osc::BeginMessage(address) << valueIndex << (int)moduleId << (int)valueId << position.x << position.y << valueAbsolute << valueNormalized;
@@ -146,21 +146,21 @@ void OSCManagement::send(const char *address, int valueIndex, unsigned int modul
     transmitSocket.Send(packet.Data(), packet.Size());
 }
 void OSCManagement::send(const char *address, unsigned int moduleId, std::string slug, std::string name, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbPotentiometers, unsigned int nbSwitches, unsigned int nbLEDs) {
-    UdpTransmitSocket transmitSocket(IpEndpointName(dispatcherIp, dispatcherPort));
+    UdpTransmitSocket transmitSocket(IpEndpointName(rtBrokerIp, rtBrokerPort));
     osc::OutboundPacketStream packet(buffer, 1024);
 
     packet << osc::BeginMessage(address) << (int)moduleId << slug.c_str() << name.c_str() << position.x << position.y << size.x << size.y  << (int)nbInputs << (int)nbOutputs << (int)nbPotentiometers << (int)nbSwitches << (int)nbLEDs << osc::EndMessage;
     transmitSocket.Send(packet.Data(), packet.Size());
 }
 void OSCManagement::send(const char *address, float value) {
-    UdpTransmitSocket transmitSocket(IpEndpointName(dispatcherIp, dispatcherPort));
+    UdpTransmitSocket transmitSocket(IpEndpointName(rtBrokerIp, rtBrokerPort));
     osc::OutboundPacketStream packet(buffer, 1024);
 
     packet << osc::BeginMessage(address) << value << osc::EndMessage;
     transmitSocket.Send(packet.Data(), packet.Size());
 }
 void OSCManagement::send(const char *address) {
-    UdpTransmitSocket transmitSocket(IpEndpointName(dispatcherIp, dispatcherPort));
+    UdpTransmitSocket transmitSocket(IpEndpointName(rtBrokerIp, rtBrokerPort));
     osc::OutboundPacketStream packet(buffer, 1024);
 
     packet << osc::BeginMessage(address) << osc::EndMessage;
