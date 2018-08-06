@@ -1,11 +1,11 @@
 # <img src="https://github.com/buzzinglight/Modiy/raw/master/res/admin/img/logo_red.png" alt="logo" width="250px"/>
 Modiy is an open-source hardware interface for modular synthesis
 
-## From release binary
+## Download binaries
 - Download release https://github.com/buzzinglight/Modiy/releases
 - Unzip and copy `Modiy` folder into the `Rack/plugins/` folder in your Documents location
 
-## From source code
+## Build from source code
 - Clone repository into the `plugins/` folder of VCV Rack source code (https://github.com/VCVRack) :
 
 ```
