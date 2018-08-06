@@ -1,3 +1,5 @@
+![alt text](https://github.com/buzzinglight/Modiy/raw/master/res/admin/img/logo_red.png "Logo")
+
 # Modiy
 Modiy is an open-source hardware interface for modular synthesis
 
