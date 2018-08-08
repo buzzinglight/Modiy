@@ -1,5 +1,5 @@
 # <img src="https://github.com/buzzinglight/Modiy/raw/master/res/admin/img/logo_red.png" alt="logo" width="250px"/>
-Modiy is an open-source hardware interface for modular synthesis.
+Modiy is an open-source hardware interface for modular synthesis. **The project is in a work-in-progress status.**
 
 ![alt text](https://github.com/buzzinglight/Modiy/raw/master/res/arduino/Synchronisation.png "Synchronisation mechanism")
 
