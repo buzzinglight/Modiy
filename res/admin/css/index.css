@@ -38,6 +38,9 @@ h2 {
 .noTopMargin {
 	margin-top:				5px;
 }
+p {
+	margin:					10px 0 10px 0;
+}
 
 .button {
 	background:				#F93143;
@@ -82,11 +85,10 @@ s	display:				none;
 	padding-right:			5px;
 }
 
-.partlist .price {
+.partlist .price:first-child {
 	margin-left:			10px;
-	font-size:				smaller;
 }
-h2 .price {
+.partlist .price, h2 .price {
 	font-size:				12px;
 }
 

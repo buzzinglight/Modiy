@@ -98,28 +98,39 @@ var prices = {
 	],
 	audioJacks: [
 		{
-			source: "http://fr.farnell.com/cliff-electronic-components/fc681374v/connecteur-audio-jack-3-5mm-3pos/dp/2431939",
+			source: "http://fr.farnell.com/multicomp/mj-074n/embase-jack-3-5mm-3p/dp/1267374",
 			prices: {
-				"1":    0.998,
-				"50":   0.58,
-				"100":  0.504,
-				"250":  0.471,
-				"500":  0.438,
-				"1500": 0.416
+				"1": 1.15,
+				"25": 0.954,
+				"75": 0.79,
+				"150": 0.674,
+				"250": 0.587,
+				"500": 0.521
 			}
 		}
 	],
 	potentiometers: [
 		{
-			source: "http://fr.farnell.com/bi-technologies-tt-electronics/p160knp-0qc20b10k/potentiometre-rotatif-10k-20mm/dp/1760793",
+			source: "http://fr.farnell.com/bi-technologies-tt-electronics/p160knp-0ec15b10k/potentiometre-rotatif-10k-15mm/dp/1684813",
 			prices: {
-				"1":    0.944,
-				"10":   0.769,
-				"25":   0.574,
-				"50":   0.508,
-				"100":  0.387,
-				"300":  0.363,
-				"1500": 0.305
+				"1":    0.954,
+				"10":   0.673,
+				"25":   0.545,
+				"50":   0.502,
+				"100":  0.427,
+				"300":  0.353,
+				"1500": 0.333
+			}
+		},
+		{
+			source: "http://fr.farnell.com/multicomp/mc21054/bouton-molete-rond-20mm-plastique/dp/2543072",
+			prices: {
+				"5": 0.707,
+				"75": 0.573,
+				"150": 0.408,
+				"250": 0.364,
+				"500": 0.325,
+				"1500": 0.273
 			}
 		}
 	],
@@ -129,7 +140,14 @@ var prices = {
 			prices: {
 				"1":    12.99,
 			}
+		},
+		{
+			source: "https://www.amazon.fr/Boîtier-acrylique-transparent-brillant-Arduino/dp/B01CS5RQ7O/ref=sr_1_5?ie=UTF8&qid=1533746020&sr=8-5&keywords=Arduino+Mega+case",
+			prices: {
+				"1":    2.69,
+			}
 		}
+		
 	],
 	wires: [
 		{
@@ -143,7 +161,6 @@ var prices = {
 		{
 			source: "http://fr.farnell.com/kingbright/l-1503gc/led-5mm-vert-100mcd-568nm/dp/2335730?MER=bn_level5_5NP_EngagementRecSingleItem_4",
 			prices: {
-				"1":    0.0739,
 				"5":    0.0739,
 				"25":   0.0709,
 				"100":  0.0679,
@@ -155,7 +172,6 @@ var prices = {
 		{
 			source: "http://fr.farnell.com/multicomp/mcre000033/resistance-couche-carbon-125mw/dp/1700232?st=470%20ohm%20resistance",
 			prices: {
-				"1": 0.0198,
 				"5": 0.0198,
 				"50": 0.0171,
 				"250": 0.0143,
@@ -179,6 +195,14 @@ var prices = {
 			}
 		}		
 	],
+	audioInterface: [
+		{
+			source: "https://www.amazon.fr/Firepower-BEHRINGER-FCA1616-Interface-compatible/dp/B00E87OK1G/ref=pd_cp_267_1?_encoding=UTF8&pd_rd_i=B00E87OK1G&pd_rd_r=ade416d4-9b2d-11e8-9d26-3fe4c7b0301a&pd_rd_w=amqPT&pd_rd_wg=WcnoM&pf_rd_i=desktop-dp-sims&pf_rd_m=A1X6FK5RDHNB96&pf_rd_p=2171515611131751452&pf_rd_r=F9YH3QZE272RV2A33TGM&pf_rd_s=desktop-dp-sims&pf_rd_t=40701&psc=1&refRID=F9YH3QZE272RV2A33TGM",
+			prices: {
+				"1": 225,
+			}
+		}		
+	]
 }
 //133.4mm = 380px (VCV)
 function updateCache(step) {
@@ -287,7 +311,8 @@ function updateCache(step) {
 					leds: 			{value: floor(jal.leds / cache.arduino.leds.length)},
 					wires:          {value: 0},
 					boards:         {value: 0},
-					audioJacks:     {value: 0}
+					audioJacks:     {value: 0},
+					audioInterface: {value: 0}
 				};
 				cache.partList.boards.value         = max(max(cache.partList.jacks.value, cache.partList.potentiometers.value), cache.partList.leds.value) + 1;
 				cache.partList.jacks.value          = jal.jacks;
@@ -313,6 +338,7 @@ function updateCache(step) {
 					if(module.audio)
 						cache.partList.audioJacks.value += module.audio.inputs.length + module.audio.outputs.length;
 				});
+				cache.partList.audioInterface.value = ceil(cache.partList.audioJacks.value / 16);
 				
 				//Price list and display
 				var totalPrice = 0;
@@ -321,10 +347,10 @@ function updateCache(step) {
 					
 					part.price = undefined;
 					if((prices[type]) && (prices[type].length)) {
-						var currentPriceMin = "";
 						for(var i = 0 ; i < prices[type].length ; i++) {
+							var currentPriceMin = "";
 							$.each(prices[type][i].prices, function(priceMin, price) {
-								if(part.value >= parseFloat(priceMin))
+								if((currentPriceMin == "") || (part.value >= parseFloat(priceMin)))
 									currentPriceMin = priceMin;
 							});
 							if(currentPriceMin != "") {
@@ -332,17 +358,21 @@ function updateCache(step) {
 									source: prices[type][i].source,
 									unit:  prices[type][i].prices[currentPriceMin]
 								};
-								part.price.total = ceil(part.price.unit * part.value);
+								part.price.total = part.price.unit * part.value;
 
-								html += "&nbsp;<a class='price' href='" + part.price.source + "' target='_blank'>~" + part.price.total + "€</a>";
-								totalPrice += part.price.total;
+								if(i > 0)
+									html += "&nbsp;+";
+								html += "&nbsp;<a class='price' href='" + part.price.source + "' target='_blank'>" + ceil(part.price.total) + "€</a>";
+
+								if(type != "audioInterface")
+									totalPrice += part.price.total;
 							}
 						}
 					}
 					$("#nb" + type + ">span").html(html);
 				});
 				if(totalPrice > 0)
-					$("h2 .price").html(totalPrice + "€");
+					$("h2 .price").html(ceil(totalPrice) + "€");
 				else
 					$("h2 .price").html("");
 				
@@ -661,37 +691,38 @@ function websocketReception(message) {
 
 				//Module reference
 				var module = cacheTmp.modules[jack.moduleId];
-
-				//Jack type (input or output)
-				if(jack.isInput)	{ module.inputs [jack.inputOrOutputId] = jack; jack.type = "jack_input";  }
-				else				{ module.outputs[jack.inputOrOutputId] = jack; jack.type = "jack_output"; }
+				if(module) {
+					//Jack type (input or output)
+					if(jack.isInput)	{ module.inputs [jack.inputOrOutputId] = jack; jack.type = "jack_input";  }
+					else				{ module.outputs[jack.inputOrOutputId] = jack; jack.type = "jack_output"; }
 				
-				//Wiring
-				jack.wiring = {board: floor(jack.id/cache.arduino.jacks.length), pin: cache.arduino.jacks[jack.id % cache.arduino.jacks.length]};
+					//Wiring
+					jack.wiring = {board: floor(jack.id/cache.arduino.jacks.length), pin: cache.arduino.jacks[jack.id % cache.arduino.jacks.length]};
 				
-				//Calculate module board
-				if(module.wiring.boards[jack.wiring.board] == undefined)
-					module.wiring.boards[jack.wiring.board] = 0;
-				module.wiring.boards[jack.wiring.board]++;
+					//Calculate module board
+					if(module.wiring.boards[jack.wiring.board] == undefined)
+						module.wiring.boards[jack.wiring.board] = 0;
+					module.wiring.boards[jack.wiring.board]++;
 				
-				//Modidy Physical Sync module : audio send/receive case
-				if(module.slug == "ModiySync") {
-					if(module.audio == undefined)	module.audio = {inputs: [], outputs: []};
-					var jack = JSON.parse(JSON.stringify(jack));
-					jack.isInput = !jack.isInput;
-					if(jack.isInput) {
-						jack.pos.x -= 30;
-						module.audio.inputs[jack.inputOrOutputId] = jack;
-						jack.type = "jack_audio_input";
+					//Modidy Physical Sync module : audio send/receive case
+					if(module.slug == "ModiySync") {
+						if(module.audio == undefined)	module.audio = {inputs: [], outputs: []};
+						var jack = JSON.parse(JSON.stringify(jack));
+						jack.isInput = !jack.isInput;
+						if(jack.isInput) {
+							jack.pos.x -= 30;
+							module.audio.inputs[jack.inputOrOutputId] = jack;
+							jack.type = "jack_audio_input";
+						}
+						else {
+							jack.pos.x += 30;
+							module.audio.outputs[jack.inputOrOutputId] = jack;
+							jack.type = "jack_audio_output";
+						}
+						delete jack.wiring;
+						jack.id = jack.inputOrOutputId+1;
+						jack.wiring = {board: "audiocard", pin: jack.id};
 					}
-					else {
-						jack.pos.x += 30;
-						module.audio.outputs[jack.inputOrOutputId] = jack;
-						jack.type = "jack_audio_output";
-					}
-					delete jack.wiring;
-					jack.id = jack.inputOrOutputId+1;
-					jack.wiring = {board: "audiocard", pin: jack.id};
 				}
 			}
 		}
@@ -712,17 +743,18 @@ function websocketReception(message) {
 
 				//Module reference
 				var module = cacheTmp.modules[potentiometer.moduleId];
-
-				//Wiring
-				potentiometer.wiring = {board: floor(potentiometer.id / cache.arduino.potentiometers.length), pin: cache.arduino.potentiometers[potentiometer.id % cache.arduino.potentiometers.length]};
+				if(module) {
+					//Wiring
+					potentiometer.wiring = {board: floor(potentiometer.id / cache.arduino.potentiometers.length), pin: cache.arduino.potentiometers[potentiometer.id % cache.arduino.potentiometers.length]};
 				
-				//Calculate module board
-				if(module.wiring.boards[potentiometer.wiring.board] == undefined)
-					module.wiring.boards[potentiometer.wiring.board] = 0;
-				module.wiring.boards[potentiometer.wiring.board]++;
+					//Calculate module board
+					if(module.wiring.boards[potentiometer.wiring.board] == undefined)
+						module.wiring.boards[potentiometer.wiring.board] = 0;
+					module.wiring.boards[potentiometer.wiring.board]++;
 
-				//Add in container
-				module.potentiometers[potentiometer.potentiometerId] = potentiometer;
+					//Add in container
+					module.potentiometers[potentiometer.potentiometerId] = potentiometer;
+				}
 			}
 		}
 		else if(message[0] == "/dump/switches") {
@@ -742,17 +774,18 @@ function websocketReception(message) {
 
 				//Module reference
 				var module = cacheTmp.modules[button.moduleId];
-
-				//Wiring
-				button.wiring = {board: floor(button.id / cache.arduino.switches.length), pin: cache.arduino.switches[button.id % cache.arduino.switches.length]};
+				if(module) {
+					//Wiring
+					button.wiring = {board: floor(button.id / cache.arduino.switches.length), pin: cache.arduino.switches[button.id % cache.arduino.switches.length]};
 				
-				//Calculate module board
-				if(module.wiring.boards[button.wiring.board] == undefined)
-					module.wiring.boards[button.wiring.board] = 0;
-				module.wiring.boards[button.wiring.board]++;
+					//Calculate module board
+					if(module.wiring.boards[button.wiring.board] == undefined)
+						module.wiring.boards[button.wiring.board] = 0;
+					module.wiring.boards[button.wiring.board]++;
 
-				//Add in container
-				module.switches[button.switchId] = button;
+					//Add in container
+					module.switches[button.switchId] = button;
+				}
 			}
 		}
 		else if(message[0] == "/dump/leds") {
@@ -772,17 +805,18 @@ function websocketReception(message) {
 
 				//Module reference
 				var module = cacheTmp.modules[led.moduleId];
-
-				//Wiring
-				led.wiring = {board: floor(led.id / cache.arduino.leds.length), pin: cache.arduino.leds[led.id % cache.arduino.leds.length]};
+				if(module) {
+					//Wiring
+					led.wiring = {board: floor(led.id / cache.arduino.leds.length), pin: cache.arduino.leds[led.id % cache.arduino.leds.length]};
 				
-				//Calculate module board
-				if(module.wiring.boards[led.wiring.board] == undefined)
-					module.wiring.boards[led.wiring.board] = 0;
-				module.wiring.boards[led.wiring.board]++;
+					//Calculate module board
+					if(module.wiring.boards[led.wiring.board] == undefined)
+						module.wiring.boards[led.wiring.board] = 0;
+					module.wiring.boards[led.wiring.board]++;
 
-				//Add in container
-				module.lights[led.lightId] = led;
+					//Add in container
+					module.lights[led.lightId] = led;
+				}
 			}
 		}
 	}
