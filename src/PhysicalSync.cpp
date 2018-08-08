@@ -1,5 +1,12 @@
 #include "PhysicalSync.hpp"
 
+//Static variables
+std::vector<std::string> Modul::modulesIgnoredStr;
+std::vector<JackWire> JackWire::wires;
+std::vector<Modul> Modul::modules;
+std::vector<Modul> Modul::modulesWithIgnored;
+
+
 //Module initialisation
 PhysicalSync::PhysicalSync() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {
     info("Audio initialisation…");
@@ -17,16 +24,53 @@ json_t *PhysicalSync::toJson() {
     json_t *rootJ = json_object();
     json_object_set_new(rootJ, "audio", audioIO.toJson());
     json_object_set_new(rootJ, "nbChannels", json_integer(getChannels()));
+    if(osc)
+        json_object_set_new(rootJ, "modules", Modul::toJson());
     return rootJ;
 }
 
 void PhysicalSync::fromJson(json_t *rootJ) {
+    //Extract
     json_t *audioJ = json_object_get(rootJ, "audio");
+    json_t *modulesJ = json_object_get(rootJ, "modules");
     json_t *nbChannels = json_object_get(rootJ, "nbChannels");
+
+    //Set
     if (nbChannels)
         setChannels(json_integer_value(nbChannels));
+    if(osc)
+        Modul::fromJson(modulesJ);
     audioIO.fromJson(audioJ);
+
+    //Cache update
+    updateCache();
 }
+
+
+json_t* Modul::toJson() {
+    json_t *rootJ = json_object();
+    // ignored
+    json_t *ignoresJ = json_array();
+    for (unsigned int i = 0 ; i < modulesIgnoredStr.size() ; i++) {
+        json_t *ignoreJ = json_string(modulesIgnoredStr.at(i).c_str());
+        json_array_append_new(ignoresJ, ignoreJ);
+    }
+    json_object_set_new(rootJ, "ignore", ignoresJ);
+    return rootJ;
+}
+void Modul::fromJson(json_t *rootJ) {
+    // ignored
+    json_t *ignoresJ = json_object_get(rootJ, "ignore");
+    if (ignoresJ) {
+        modulesIgnoredStr.clear();
+        for (unsigned int i = 0 ; i < json_array_size(ignoresJ) ; i++) {
+            json_t *ignoreJ = json_array_get(ignoresJ, i);
+            if (ignoreJ)
+                modulesIgnoredStr.push_back(json_string_value(ignoreJ));
+        }
+    }
+}
+
 
 //Plugin reset
 void PhysicalSync::onReset() {
@@ -36,16 +80,20 @@ void PhysicalSync::onReset() {
 
 
 
+
 //Update modules, jacks, potentiometers, switches, LEDs… cache
 void PhysicalSync::updateCache(bool force) {
     bool debug = false;
     if((updateCacheNeeded) || (force)) {
-        //Order modules by graphical position
-        modules.clear();
+        //Order modules by graphical position and fill vectors
+        Modul::modules.clear();
+        Modul::modulesWithIgnored.clear();
         for (Widget *w : gRackWidget->moduleContainer->children) {
-            ModuleWithId moduleWithId;
+            Modul moduleWithId;
             moduleWithId.widget = dynamic_cast<ModuleWidget*>(w);
-            if(moduleWithId.widget->module != NULL) {
+
+            //If the module has a widget and a module
+            if((moduleWithId.widget) && (moduleWithId.widget->module != NULL)) {
                 //Store potentiometers and switches
                 for(unsigned int parameterId = 0 ; parameterId < moduleWithId.widget->params.size() ; parameterId++) {
                     ParamWidget *parameter = moduleWithId.widget->params.at(parameterId);
@@ -113,30 +161,68 @@ void PhysicalSync::updateCache(bool force) {
                     }
                 }
 
+                //Name of module
+                moduleWithId.tmpName = moduleWithId.widget->model->name;
 
                 //Add to container
-                modules.push_back(moduleWithId);
+                Modul::modules.push_back(moduleWithId);
             }
         }
-        //Set an absolute ID
-        std::sort(modules.begin(), modules.end(), modulesWidgetGraphicalSort());
-        for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++)
-            modules[moduleId].moduleId = moduleId;
+
+        //Sorts modules and set a name
+        std::vector<int> modulesToRemove;
+        std::sort(Modul::modules.begin(), Modul::modules.end(), modulesWidgetGraphicalSort());
+        for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+            //Extended name
+            int moduleIndex = -1;
+            for(unsigned int moduleIdCheck = 0 ; moduleIdCheck < Modul::modules.size() ; moduleIdCheck++) {
+                if((Modul::modules.at(moduleIdCheck).widget != Modul::modules.at(moduleId).widget) && (Modul::modules.at(moduleIdCheck).tmpName == Modul::modules.at(moduleId).tmpName)) {
+                    if(moduleIndex < 0)
+                        moduleIndex = 1;
+                    else
+                        moduleIndex++;
+                }
+            }
+            if(moduleIndex < 0)
+                Modul::modules[moduleId].name = Modul::modules.at(moduleId).tmpName;
+            else
+                Modul::modules[moduleId].name = Modul::modules.at(moduleId).tmpName + " #" + std::to_string(moduleIndex);
+            /*
+            if((module.slug != module.name) && (module.slug != "ModiySync"))
+                introText = module.name + " (" + module.slug + ")";
+            */
+
+            //Check if not ignored
+            if(Modul::modules.at(moduleId).isIgnored())
+                modulesToRemove.push_back(moduleId);
+        }
+        //Last copy
+        for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++)
+            Modul::modulesWithIgnored.push_back(Modul::modules.at(moduleId));
+        //Removes ignored modules
+        if(modulesToRemove.size())
+            for(int i = modulesToRemove.size()-1 ; i >= 0 ; i--)
+                Modul::modules.erase(Modul::modules.begin() + modulesToRemove.at(i));
+
+        //Set an absolute ID and a name
+        for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++)
+            Modul::modules[moduleId].moduleId = moduleId;
+
 
         //Store wires linked to modules (not in creation)
-        wires.clear();
+        JackWire::wires.clear();
         for (Widget *w : gRackWidget->wireContainer->children) {
             JackWire wireWithId;
             wireWithId.widget = dynamic_cast<WireWidget*>(w);
             if(wireWithId.widget->wire != NULL)
-                wires.push_back(wireWithId);
+                JackWire::wires.push_back(wireWithId);
         }
 
         //Show infos on modules
         if(debug)
             info("MODULES");
-        for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
-            const ModuleWithId moduleWithId = modules.at(moduleId);
+        for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+            const Modul moduleWithId = Modul::modules.at(moduleId);
             ModuleWidget *widget = moduleWithId.widget;
             Module *module = widget->module;
             Model  *model  = widget->model;
@@ -160,21 +246,21 @@ void PhysicalSync::updateCache(bool force) {
         //Show infos on wires + cache modules references
         if(debug)
             info("WIRES");
-        for(unsigned int wireId = 0 ; wireId < wires.size() ; wireId++) {
-            wires[wireId].inputModuleId = wires[wireId].outputModuleId = -1;
-            ModuleWithId inputModule, outputModule;
-            for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
-                ModuleWithId moduleWidgetTest = modules.at(moduleId);
-                if(moduleWidgetTest.widget->module == wires.at(wireId).widget->wire->inputModule)
+        for(unsigned int wireId = 0 ; wireId < JackWire::wires.size() ; wireId++) {
+            JackWire::wires[wireId].inputModuleId = JackWire::wires[wireId].outputModuleId = -1;
+            Modul inputModule, outputModule;
+            for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+                Modul moduleWidgetTest = Modul::modules.at(moduleId);
+                if(moduleWidgetTest.widget->module == JackWire::wires.at(wireId).widget->wire->inputModule)
                     inputModule = moduleWidgetTest;
-                if(moduleWidgetTest.widget->module == wires.at(wireId).widget->wire->outputModule)
+                if(moduleWidgetTest.widget->module == JackWire::wires.at(wireId).widget->wire->outputModule)
                     outputModule = moduleWidgetTest;
             }
             if((inputModule.widget) && (outputModule.widget)) {
-                wires[wireId].inputModuleId  = inputModule.moduleId;
-                wires[wireId].outputModuleId = outputModule.moduleId;
+                JackWire::wires[wireId].inputModuleId  = inputModule.moduleId;
+                JackWire::wires[wireId].outputModuleId = outputModule.moduleId;
                 if(debug)
-                    info("Wire %d link %d - %s %s (%d) to %d - %s %s (%d)", wireId, wires.at(wireId).outputModuleId, outputModule.widget->model->slug.c_str(), outputModule.widget->model->name.c_str(), wires.at(wireId).widget->wire->outputId, wires.at(wireId).inputModuleId, inputModule.widget->model->slug.c_str(), inputModule.widget->model->name.c_str(), wires.at(wireId).widget->wire->inputId);
+                    info("Wire %d link %d - %s %s (%d) to %d - %s %s (%d)", wireId, JackWire::wires.at(wireId).outputModuleId, outputModule.widget->model->slug.c_str(), outputModule.widget->model->name.c_str(), JackWire::wires.at(wireId).widget->wire->outputId, JackWire::wires.at(wireId).inputModuleId, inputModule.widget->model->slug.c_str(), inputModule.widget->model->name.c_str(), JackWire::wires.at(wireId).widget->wire->inputId);
             }
         }
 
@@ -373,8 +459,14 @@ void PhysicalSync::step() {
 
 
 //Getters
+Modul PhysicalSync::getModule(unsigned int moduleId) {
+    updateCache();
+    if(moduleId < Modul::modules.size())
+        return Modul::modules.at(moduleId);
+    return Modul();
+}
 ParamWidget* PhysicalSync::getPotentiometer(unsigned int moduleId, unsigned int potentiometerId) {
-    ModuleWithId module = getModule(moduleId);
+    Modul module = getModule(moduleId);
     if(module.widget) {
         if(potentiometerId < module.potentiometers.size())
             return module.potentiometers.at(potentiometerId);
@@ -382,7 +474,7 @@ ParamWidget* PhysicalSync::getPotentiometer(unsigned int moduleId, unsigned int 
     return 0;
 }
 ParamWidget* PhysicalSync::getSwitch(unsigned int moduleId, unsigned int switchId) {
-    ModuleWithId module = getModule(moduleId);
+    Modul module = getModule(moduleId);
     if(module.widget) {
         if(switchId < module.switches.size())
             return module.switches.at(switchId);
@@ -390,7 +482,7 @@ ParamWidget* PhysicalSync::getSwitch(unsigned int moduleId, unsigned int switchI
     return 0;
 }
 JackInput PhysicalSync::getInputPort(unsigned int moduleId, unsigned int inputId) {
-    ModuleWithId module = getModule(moduleId);
+    Modul module = getModule(moduleId);
     if(module.widget) {
         if(inputId < module.inputs.size())
             return module.inputs.at(inputId);
@@ -398,21 +490,15 @@ JackInput PhysicalSync::getInputPort(unsigned int moduleId, unsigned int inputId
     return JackInput();
 }
 JackOutput PhysicalSync::getOutputPort(unsigned int moduleId, unsigned int outputId) {
-    ModuleWithId module = getModule(moduleId);
+    Modul module = getModule(moduleId);
     if(module.widget) {
         if(outputId < module.outputs.size())
             return module.outputs.at(outputId);
     }
     return JackOutput();
 }
-ModuleWithId PhysicalSync::getModule(unsigned int moduleId) {
-    updateCache();
-    if(moduleId < modules.size())
-        return modules.at(moduleId);
-    return ModuleWithId();
-}
 LED PhysicalSync::getLED(unsigned int moduleId, unsigned int ledId) {
-    ModuleWithId module = getModule(moduleId);
+    Modul module = getModule(moduleId);
     if(module.widget) {
         if(ledId < module.leds.size())
             return module.leds.at(ledId);
@@ -423,30 +509,31 @@ JackWire PhysicalSync::getWire(unsigned int inputModuleId, unsigned int inputPor
     JackInput  input  = getInputPort (inputModuleId,  inputPortId);
     JackOutput output = getOutputPort(outputModuleId, outputPortId);
     if((input.port) && (output.port))
-        for(unsigned int wireId = 0 ; wireId < wires.size() ; wireId++)
-            if((wires.at(wireId).inputModuleId == (int)inputModuleId) && (wires.at(wireId).outputModuleId == (int)outputModuleId))
-                if((wires.at(wireId).widget->inputPort->portId == (int)inputPortId) && (wires.at(wireId).widget->outputPort->portId == (int)outputPortId))
-                    return wires.at(wireId);
+        for(unsigned int wireId = 0 ; wireId < JackWire::wires.size() ; wireId++)
+            if((JackWire::wires.at(wireId).inputModuleId == (int)inputModuleId) && (JackWire::wires.at(wireId).outputModuleId == (int)outputModuleId))
+                if((JackWire::wires.at(wireId).widget->inputPort->portId == (int)inputPortId) && (JackWire::wires.at(wireId).widget->outputPort->portId == (int)outputPortId))
+                    return JackWire::wires.at(wireId);
     return JackWire();
 }
 
 
 //Absolute ID mapping to module (and reverse)
 bool PhysicalSync::mapFromPotentiometer(unsigned int index, int *moduleId, int *potentiometerId) {
-    updateCache();
-    ModuleWithId lastModule;
+    Modul lastModule;
     *moduleId = 0;
     *potentiometerId  = 0;
 
     //Search for index overflow in modules
-    for(unsigned int lastModuleId = 0 ; lastModuleId < modules.size() ; lastModuleId++) {
-        lastModule = modules.at(lastModuleId);
-        if(index >= lastModule.potentiometers.size()) {
-            index -= lastModule.potentiometers.size();
-            *moduleId = lastModuleId+1;
+    for(unsigned int lastModuleId = 0 ; lastModuleId < Modul::modules.size() ; lastModuleId++) {
+        lastModule = getModule(lastModuleId);
+        if(lastModule.widget) {
+            if(index >= lastModule.potentiometers.size()) {
+                index -= lastModule.potentiometers.size();
+                *moduleId = lastModuleId+1;
+            }
+            else
+                break;
         }
-        else
-            break;
     }
 
     //Add rest of index to potentiometerId
@@ -460,20 +547,21 @@ bool PhysicalSync::mapFromPotentiometer(unsigned int index, int *moduleId, int *
     }
 }
 bool PhysicalSync::mapFromSwitch(unsigned int index, int *moduleId, int *switchId) {
-    updateCache();
-    ModuleWithId lastModule;
+    Modul lastModule;
     *moduleId = 0;
     *switchId = 0;
 
     //Search for index overflow in modules
-    for(unsigned int lastModuleId = 0 ; lastModuleId < modules.size() ; lastModuleId++) {
-        lastModule = modules.at(lastModuleId);
-        if(index >= lastModule.switches.size()) {
-            index -= lastModule.switches.size();
-            *moduleId = lastModuleId+1;
+    for(unsigned int lastModuleId = 0 ; lastModuleId < Modul::modules.size() ; lastModuleId++) {
+        lastModule = getModule(lastModuleId);
+        if(lastModule.widget) {
+            if(index >= lastModule.switches.size()) {
+                index -= lastModule.switches.size();
+                *moduleId = lastModuleId+1;
+            }
+            else
+                break;
         }
-        else
-            break;
     }
 
     //Add rest of index to potentiometerId
@@ -487,21 +575,22 @@ bool PhysicalSync::mapFromSwitch(unsigned int index, int *moduleId, int *switchI
     }
 }
 bool PhysicalSync::mapFromJack(unsigned int index, int *moduleId, int *inputOrOutputId, bool *isInput) {
-    updateCache();
-    ModuleWithId lastModule;
+    Modul lastModule;
     *isInput         = true;
     *moduleId        = 0;
     *inputOrOutputId = 0;
 
     //Search for index overflow in modules
-    for(unsigned int lastModuleId = 0 ; lastModuleId < modules.size() ; lastModuleId++) {
-        lastModule = modules.at(lastModuleId);
-        if(index  >= (lastModule.inputs.size()+lastModule.outputs.size())) {
-            index -= (lastModule.inputs.size()+lastModule.outputs.size());
-            *moduleId = lastModuleId+1;
+    for(unsigned int lastModuleId = 0 ; lastModuleId < Modul::modules.size() ; lastModuleId++) {
+        lastModule = getModule(lastModuleId);
+        if(lastModule.widget) {
+            if(index  >= (lastModule.inputs.size()+lastModule.outputs.size())) {
+                index -= (lastModule.inputs.size()+lastModule.outputs.size());
+                *moduleId = lastModuleId+1;
+            }
+            else
+                break;
         }
-        else
-            break;
     }
 
     //Add rest of index to inputOrOutputId
@@ -520,15 +609,15 @@ bool PhysicalSync::mapFromJack(unsigned int index, int *moduleId, int *inputOrOu
     }
 }
 int PhysicalSync::mapToLED(unsigned int moduleId, unsigned int ledId) {
-    updateCache();
-    LED led = getLED(moduleId, ledId);
+    const LED led = getLED(moduleId, ledId);
     int index = -1;
     if(led.widget) {
         index = 0;
 
         //Look for all modules before
-        for(unsigned int lastModuleId = 0 ; lastModuleId < moduleId ; lastModuleId++)
-            index += modules.at(lastModuleId).leds.size();
+        for(unsigned int lastModuleId = 0 ; lastModuleId < moduleId ; lastModuleId++) {
+            index += getModule(lastModuleId).leds.size();
+        }
         index += ledId;
     }
     else
@@ -536,15 +625,14 @@ int PhysicalSync::mapToLED(unsigned int moduleId, unsigned int ledId) {
     return index;
 }
 int PhysicalSync::mapToPotentiometer(unsigned int moduleId, unsigned int potentiometerId) {
-    updateCache();
-    ParamWidget *potentiometer = getPotentiometer(moduleId, potentiometerId);
+    const ParamWidget *potentiometer = getPotentiometer(moduleId, potentiometerId);
     int index = -1;
     if(potentiometer) {
         index = 0;
 
         //Look for all modules before
         for(unsigned int lastModuleId = 0 ; lastModuleId < moduleId ; lastModuleId++)
-            index += modules.at(lastModuleId).potentiometers.size();
+            index += getModule(lastModuleId).potentiometers.size();
         index += potentiometerId;
     }
     else
@@ -552,15 +640,14 @@ int PhysicalSync::mapToPotentiometer(unsigned int moduleId, unsigned int potenti
     return index;
 }
 int PhysicalSync::mapToSwitch(unsigned int moduleId, unsigned int switchId) {
-    updateCache();
-    ParamWidget *button = getSwitch(moduleId, switchId);
+    const ParamWidget *button = getSwitch(moduleId, switchId);
     int index = -1;
     if(button) {
         index = 0;
 
         //Look for all modules before
         for(unsigned int lastModuleId = 0 ; lastModuleId < moduleId ; lastModuleId++)
-            index += modules.at(lastModuleId).switches.size();
+            index += getModule(lastModuleId).switches.size();
         index += switchId;
     }
     else
@@ -568,8 +655,7 @@ int PhysicalSync::mapToSwitch(unsigned int moduleId, unsigned int switchId) {
     return index;
 }
 int PhysicalSync::mapToJack(unsigned int moduleId, unsigned int inputOrOutputId, bool isInput) {
-    updateCache();
-    Port *port;
+    const Port *port;
     if(isInput) port = getInputPort (moduleId, inputOrOutputId).port;
     else        port = getOutputPort(moduleId, inputOrOutputId).port;
     int index = -1;
@@ -577,12 +663,14 @@ int PhysicalSync::mapToJack(unsigned int moduleId, unsigned int inputOrOutputId,
         index = 0;
 
         //Look for all modules before
-        for(unsigned int lastModuleId = 0 ; lastModuleId < moduleId ; lastModuleId++)
-            index += (modules.at(lastModuleId).inputs.size()+modules.at(lastModuleId).outputs.size());
+        for(unsigned int lastModuleId = 0 ; lastModuleId < moduleId ; lastModuleId++) {
+            Modul module = getModule(lastModuleId);
+            index += (module.inputs.size() + module.outputs.size());
+        }
 
         //Add input size offset if it's an output
         if(!isInput)
-            index += modules.at(moduleId).inputs.size();
+            index += getModule(moduleId).inputs.size();
 
         index += inputOrOutputId;
     }
@@ -659,7 +747,7 @@ void PhysicalSync::setConnection(unsigned int outputModuleId, unsigned int outpu
     stream << ") : ";
     std::string logTextBase = stream.str();
 
-    JackWire wire = getWire(inputModuleId, inputPortId, outputModuleId, outputPortId);
+    const JackWire wire = getWire(inputModuleId, inputPortId, outputModuleId, outputPortId);
     if((!wire.widget) && (active)) {
         JackOutput output = getOutputPort(outputModuleId, outputPortId);
         JackInput  input  = getInputPort (inputModuleId,  inputPortId);
@@ -691,15 +779,13 @@ void PhysicalSync::setConnection(unsigned int outputModuleId, unsigned int outpu
         logToOsc(logTextBase + "no action done");
 }
 void PhysicalSync::clearConnection() {
-    updateCache();
-    for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
-        ModuleWithId module = getModule(moduleId);
+    for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+        Modul module = getModule(moduleId);
         for(unsigned int inputId = 0 ; inputId < module.inputs.size() ; inputId++)
             gRackWidget->wireContainer->removeAllWires(module.inputs.at(inputId).port);
         for(unsigned int ouputId = 0 ; ouputId < module.outputs.size() ; ouputId++)
             gRackWidget->wireContainer->removeAllWires(module.outputs.at(ouputId).port);
     }
-    updateCache();
 }
 
 
@@ -708,11 +794,10 @@ void PhysicalSync::dumpLEDs(const char *address, bool inLine) {
     lights[OSC_LED_EXT].value = 1-lights[OSC_LED_EXT].value;
     if(osc) {
         std::string inLineString;
-        updateCache();
         if(!inLine)
             osc->send(address, "start");
-        for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
-            ModuleWithId module = getModule(moduleId);
+        for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+            Modul module = getModule(moduleId);
             if(module.widget) {
                 for(unsigned int ledId = 0 ; ledId < module.leds.size() ; ledId++) {
                     LED led = getLED(moduleId, ledId);
@@ -735,10 +820,9 @@ void PhysicalSync::dumpLEDs(const char *address, bool inLine) {
 }
 void PhysicalSync::dumpPotentiometers(const char *address) {
     if(osc) {
-        updateCache();
         osc->send(address, "start");
-        for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
-            ModuleWithId module = getModule(moduleId);
+        for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+            Modul module = getModule(moduleId);
             if(module.widget) {
                 for(unsigned int potentiometerId = 0 ; potentiometerId < module.potentiometers.size() ; potentiometerId++) {
                     ParamWidget *potentiometer = getPotentiometer(moduleId, potentiometerId);
@@ -752,10 +836,9 @@ void PhysicalSync::dumpPotentiometers(const char *address) {
 }
 void PhysicalSync::dumpSwitches(const char *address) {
     if(osc) {
-        updateCache();
         osc->send(address, "start");
-        for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
-            ModuleWithId module = getModule(moduleId);
+        for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+            Modul module = getModule(moduleId);
             if(module.widget) {
                 for(unsigned int switchId = 0 ; switchId < module.switches.size() ; switchId++) {
                     ParamWidget *button = getSwitch(moduleId, switchId);
@@ -769,10 +852,9 @@ void PhysicalSync::dumpSwitches(const char *address) {
 }
 void PhysicalSync::dumpJacks(const char *address) {
     if(osc) {
-        updateCache();
         osc->send(address, "start");
-        for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
-            ModuleWithId module = getModule(moduleId);
+        for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+            Modul module = getModule(moduleId);
             if(module.widget) {
                 for(unsigned int inputId = 0 ; inputId < module.inputs.size() ; inputId++) {
                     JackInput input = getInputPort(moduleId, inputId);
@@ -791,12 +873,11 @@ void PhysicalSync::dumpJacks(const char *address) {
 }
 void PhysicalSync::dumpModules(const char *address) {
     if(osc) {
-        updateCache();
         osc->send(address, "start");
-        for(unsigned int moduleId = 0 ; moduleId < modules.size() ; moduleId++) {
-            ModuleWithId module = getModule(moduleId);
+        for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+            Modul module = getModule(moduleId);
             if(module.widget)
-                osc->send(address, moduleId, module.widget->model->slug, module.widget->model->name, module.widget->box.pos, module.widget->box.size, module.inputs.size(), module.outputs.size(), module.potentiometers.size(), module.switches.size(), module.leds.size());
+                osc->send(address, moduleId, module.widget->model->slug, module.widget->model->name, module.widget->model->author, module.name, module.widget->box.pos, module.widget->box.size, module.inputs.size(), module.outputs.size(), module.potentiometers.size(), module.switches.size(), module.leds.size());
         }
         osc->send(address, "end");
     }
@@ -886,56 +967,84 @@ void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
     PhysicalSync *physicalSync = dynamic_cast<PhysicalSync*>(module);
     assert(physicalSync);
 
+    //Realtime Message Broker options
     if(physicalSync->osc) {
         menu->addChild(MenuEntry::create());
 
         //Settings page
-        PhysicalSyncOSCMenu *pd_openSettings = MenuItem::create<PhysicalSyncOSCMenu>("Serial port settings");
-        pd_openSettings->physicalSync = physicalSync;
-        pd_openSettings->oscMessage = "/rtbroker/opensettings";
-        menu->addChild(pd_openSettings);
+        RTBrokerMenu *rtbroker_openSettings = MenuItem::create<RTBrokerMenu>("Serial port settings");
+        rtbroker_openSettings->physicalSync = physicalSync;
+        rtbroker_openSettings->oscMessage = "/rtbroker/opensettings";
+        menu->addChild(rtbroker_openSettings);
 
         //Network page
-        PhysicalSyncOSCMenu *pd_openNetwork = MenuItem::create<PhysicalSyncOSCMenu>("Network system settings");
-        pd_openNetwork->physicalSync = physicalSync;
-        pd_openNetwork->oscMessage = "/rtbroker/opennetwork";
-        menu->addChild(pd_openNetwork);
+        RTBrokerMenu *rtbroker_openNetwork = MenuItem::create<RTBrokerMenu>("Network system settings");
+        rtbroker_openNetwork->physicalSync = physicalSync;
+        rtbroker_openNetwork->oscMessage = "/rtbroker/opennetwork";
+        menu->addChild(rtbroker_openNetwork);
 
         //Webpage page
-        PhysicalSyncOSCMenu *pd_openWebpage = MenuItem::create<PhysicalSyncOSCMenu>("Open webpage");
-        pd_openWebpage->physicalSync = physicalSync;
-        pd_openWebpage->oscMessage = "/rtbroker/openwebpage";
-        menu->addChild(pd_openWebpage);
+        RTBrokerMenu *rtbroker_openWebpage = MenuItem::create<RTBrokerMenu>("Open webpage");
+        rtbroker_openWebpage->physicalSync = physicalSync;
+        rtbroker_openWebpage->oscMessage = "/rtbroker/openwebpage";
+        menu->addChild(rtbroker_openWebpage);
     }
 
+    //Audio presets
     if(true) {
         menu->addChild(MenuEntry::create());
 
-        //Preset
-        PhysicalSyncAudioMenu *changeChannels2 = MenuItem::create<PhysicalSyncAudioMenu>("Stereo audio I/O", CHECKMARK(physicalSync->getChannels() == 2));
+        AudioPresetMenu *changeChannels2 = MenuItem::create<AudioPresetMenu>("Stereo audio I/O", CHECKMARK(physicalSync->getChannels() == 2));
         changeChannels2->physicalSync = physicalSync;
         changeChannels2->nbChannels = 2;
         menu->addChild(changeChannels2);
-        PhysicalSyncAudioMenu *changeChannels4 = MenuItem::create<PhysicalSyncAudioMenu>("Quad audio I/O", CHECKMARK(physicalSync->getChannels() == 4));
+        AudioPresetMenu *changeChannels4 = MenuItem::create<AudioPresetMenu>("Quad audio I/O", CHECKMARK(physicalSync->getChannels() == 4));
         changeChannels4->physicalSync = physicalSync;
         changeChannels4->nbChannels = 4;
         menu->addChild(changeChannels4);
-        PhysicalSyncAudioMenu *changeChannels8 = MenuItem::create<PhysicalSyncAudioMenu>("Octo audio I/O", CHECKMARK(physicalSync->getChannels() == 8));
+        AudioPresetMenu *changeChannels8 = MenuItem::create<AudioPresetMenu>("Octo audio I/O", CHECKMARK(physicalSync->getChannels() == 8));
         changeChannels8->physicalSync = physicalSync;
         changeChannels8->nbChannels = 8;
         menu->addChild(changeChannels8);
+    }
+
+    //Module ignore
+    if(physicalSync->osc) {
+        menu->addChild(MenuEntry::create());
+
+        for(unsigned int moduleId = 0 ; moduleId < Modul::modulesWithIgnored.size() ; moduleId++) {
+            const Modul module = Modul::modulesWithIgnored.at(moduleId);
+
+            IgnoreModuleMenu *moduleIgnore = MenuItem::create<IgnoreModuleMenu>("Ignore " + module.name, CHECKMARK(module.isIgnored()));
+            moduleIgnore->physicalSync = physicalSync;
+            moduleIgnore->moduleName = module.name;
+            menu->addChild(moduleIgnore);
+        }
     }
 }
 
 
 //Menu item
-void PhysicalSyncOSCMenu::onAction(EventAction &) {
+void RTBrokerMenu::onAction(EventAction &) {
     if(physicalSync)
         physicalSync->send(oscMessage);
 }
-void PhysicalSyncAudioMenu::onAction(EventAction &) {
+void AudioPresetMenu::onAction(EventAction &) {
     if(physicalSync)
         physicalSync->setChannels(nbChannels);
+}
+void IgnoreModuleMenu::onAction(EventAction &) {
+    //Check if alread ignored or not
+    if(std::find(Modul::modulesIgnoredStr.begin(), Modul::modulesIgnoredStr.end(), moduleName) != Modul::modulesIgnoredStr.end()) {
+        info("No more ignore %s", moduleName.c_str());
+        for(int i = Modul::modulesIgnoredStr.size()-1 ; i >= 0 ; i--)
+            if(Modul::modulesIgnoredStr.at(i) == moduleName)
+                Modul::modulesIgnoredStr.erase(Modul::modulesIgnoredStr.begin() + i);
+    }
+    else {
+        info("Ignore %s", moduleName.c_str());
+        Modul::modulesIgnoredStr.push_back(moduleName);
+    }
 }
 
 

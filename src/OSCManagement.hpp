@@ -34,7 +34,7 @@ public:
     virtual int  mapToLED(unsigned int moduleId, unsigned int ledId) = 0;
 
     //Dump of data
-    virtual void dumpLEDs        (const char *address, bool inLine = false) = 0;
+    virtual void dumpLEDs          (const char *address, bool inLine = false) = 0;
     virtual void dumpModules       (const char *address) = 0;
     virtual void dumpPotentiometers(const char *address) = 0;
     virtual void dumpSwitches      (const char *address) = 0;
@@ -49,7 +49,7 @@ public:
 //OSC Management
 class OSCManagement : public osc::OscPacketListener {
 public:
-    OSCManagement(OSCRemote *_oscRemote, std::string _rtBrokerIp = "127.0.0.1", int _rtBrokerPort = 4001);
+    OSCManagement(OSCRemote *_oscRemote, const std::string &_rtBrokerIp = "127.0.0.1", int _rtBrokerPort = 4001);
 
 private:
     char buffer[1024];
@@ -58,9 +58,9 @@ private:
     int rtBrokerPort;
 
 public:
-    void send(const char *address, std::string message);
+    void send(const char *address, const std::string &message);
     void send(const char *address, int valueIndex, unsigned int moduleId, unsigned int valueId, const Vec &position, float valueAbsolute, float valueNormalized, int extraInfo = -9999);
-    void send(const char *address, unsigned int moduleId, std::string slug, std::string name, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbPotentiometers, unsigned int nbSwitches, unsigned int nbLEDs);
+    void send(const char *address, unsigned int moduleId, const std::string &slug, const std::string &name, const std::string &author, const std::string &nameInRack, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbPotentiometers, unsigned int nbSwitches, unsigned int nbLEDs);
     void send(const char *address, float value);
     void send(const char *address);
 

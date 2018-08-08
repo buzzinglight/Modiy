@@ -103,7 +103,8 @@ function updateCache(step) {
 		if((cache.refresh == "complete") && ((cache.force) || (cache.modulesSerialized != modulesSerializedTmp))) {
 			cache.refresh = "";
 			cache.force = false;
-			console.log("Modules refreshed (" + cache.force + " / " + (cache.modulesSerialized != modulesSerializedTmp) + ")");
+			if(cache.modulesSerialized == undefined)	cache.modulesSerialized = "";
+			console.log("Modules refreshed (" + cache.force + " / " + (cache.modulesSerialized != modulesSerializedTmp) + " / " + cache.modulesSerialized.length + "," + modulesSerializedTmp.length + ")");
 			console.log(cache);
 			
 			//End of refresh
@@ -274,9 +275,7 @@ function updateCache(step) {
 				module.container.addChild(module.container.drawing);
 
 				//Text on buttons
-				var introText = module.name;
-				if((module.slug != module.name) && (module.slug != "ModiySync"))
-					introText = module.name + " (" + module.slug + ")";
+				var introText = module.nameInRack;
 				module.container.drawingText  = new PIXI.Text(introText, {fontFamily : "revilo san", fontSize: 10, fill : app.baseColors[module.wiring.board%3].stroke});
 				module.container.drawingText2 = new PIXI.Text(
 					module.jal.in  .jacks + "-" + module.jal.in  .potentiometers + "-" + module.jal.in  .switches + "-" + module.jal.in  .leds + "\n" +
@@ -480,17 +479,19 @@ function websocketReception(message) {
 			else {
 				//OSC deserialization
 				var module = {
-					type: "module",
-					id:   parseInt(message[1], 10),
-					slug: message[2],
-					name: message[3],
-					pos:  {x:     mm(message[4]), y:      mm(message[5])},
-					size: {width: mm(message[6]), height: mm(message[7])},
-					nbInputs: 	      parseInt(message[8], 10),
-					nbOutputs: 	      parseInt(message[9], 10),
-					nbPotentiometers: parseInt(message[10], 10),
-					nbSwitches:       parseInt(message[11], 10),
-					nbLights: 	      parseInt(message[12], 10),
+					type:       "module",
+					id:         parseInt(message[1], 10),
+					slug:       message[2],
+					name:       message[3],
+					author:     message[4],
+					nameInRack: message[5],
+					pos:  {x:     mm(message[6]), y:      mm(message[7])},
+					size: {width: mm(message[8]), height: mm(message[9])},
+					nbInputs: 	      parseInt(message[10], 10),
+					nbOutputs: 	      parseInt(message[11], 10),
+					nbPotentiometers: parseInt(message[12], 10),
+					nbSwitches:       parseInt(message[13], 10),
+					nbLights: 	      parseInt(message[14], 10),
 					wiring:           {board: undefined, boards: {}},
 					inputs: 	      [], 
 					outputs: 	      [], 

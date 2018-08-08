@@ -38,14 +38,29 @@ public:
     WireWidget *widget = NULL;
     int inputModuleId  = -1;
     int outputModuleId = -1;
+public:
+    static std::vector<JackWire> wires;
 };
-class ModuleWithId {
+class Modul {
+public:
+    static std::vector<std::string> modulesIgnoredStr;
+    static std::vector<Modul> modules, modulesWithIgnored;
+    static json_t* toJson();
+    static void fromJson(json_t *rootJ);
+
+public:
+    inline bool isIgnored() const {
+        return (std::find(Modul::modulesIgnoredStr.begin(), Modul::modulesIgnoredStr.end(), name) != Modul::modulesIgnoredStr.end());
+    }
+
 public:
     ModuleWidget *widget = NULL;
     std::vector<LED> leds;
     std::vector<ParamWidget*> potentiometers, switches;
     std::vector<JackInput> inputs;
     std::vector<JackOutput> outputs;
+    std::string name;
+    std::string tmpName;
     int moduleId = -1;
 };
 
@@ -59,7 +74,7 @@ public:
 
 //Menu item
 struct PhysicalSync;
-struct PhysicalSyncOSCMenu : MenuItem {
+struct RTBrokerMenu : MenuItem {
 public:
     PhysicalSync *physicalSync;
     const char *oscMessage;
@@ -67,10 +82,18 @@ public:
 public:
     void onAction(EventAction &e) override;
 };
-struct PhysicalSyncAudioMenu : MenuItem {
+struct AudioPresetMenu : MenuItem {
 public:
     PhysicalSync *physicalSync;
     int nbChannels;
+
+public:
+    void onAction(EventAction &e) override;
+};
+struct IgnoreModuleMenu : MenuItem {
+public:
+    PhysicalSync *physicalSync;
+    std::string moduleName;
 
 public:
     void onAction(EventAction &e) override;
@@ -149,8 +172,6 @@ private:
     inline void logToOsc(std::string message);
 
     //Cache management
-    std::vector<ModuleWithId> modules;
-    std::vector<JackWire> wires;
     bool updateCacheNeeded = true;
     void updateCache(bool force = false);
 
@@ -160,7 +181,7 @@ private:
     ParamWidget* getPotentiometer(unsigned int moduleId, unsigned int potentiometerId);
     ParamWidget* getSwitch       (unsigned int moduleId, unsigned int switchId);
     LED          getLED          (unsigned int moduleId, unsigned int ledId);
-    ModuleWithId getModule       (unsigned int moduleId);
+    Modul getModule       (unsigned int moduleId);
     JackWire     getWire         (unsigned int inputModuleId, unsigned int inputPortId, unsigned int outputModuleId, unsigned int outputPortId);
 
 //OSC Remote methods
@@ -182,7 +203,7 @@ public:
     int  mapToLED(unsigned int moduleId, unsigned int ledId) override;
 
     //Dump of data
-    void dumpLEDs        (const char *address, bool inLine = false) override;
+    void dumpLEDs          (const char *address, bool inLine = false) override;
     void dumpModules       (const char *address) override;
     void dumpPotentiometers(const char *address) override;
     void dumpSwitches      (const char *address) override;
@@ -195,7 +216,7 @@ public:
 public:
     //Sort modules by geometric position (y then x)
     struct modulesWidgetGraphicalSort {
-        inline bool operator() (const ModuleWithId &module1, const ModuleWithId &module2) {
+        inline bool operator() (const Modul &module1, const Modul &module2) {
             if(module1.widget->box.pos.y == module2.widget->box.pos.y)
                 return (module1.widget->box.pos.x < module2.widget->box.pos.x);
             else
