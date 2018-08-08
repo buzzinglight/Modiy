@@ -1,6 +1,8 @@
 # <img src="https://github.com/buzzinglight/Modiy/raw/master/res/admin/img/logo_red.png" alt="logo" width="250px"/>
 Modiy is an open-source hardware interface for modular synthesis.
 
+![alt text](https://github.com/buzzinglight/Modiy/raw/master/res/arduino/Synchronisation.png "Synchronisation mechanism")
+
 ## Download binaries
 - Download release https://github.com/buzzinglight/Modiy/releases
 - Unzip and copy `Modiy` folder into the `Rack/plugins/` folder in your Documents location
