@@ -82,6 +82,14 @@ s	display:				none;
 	padding-right:			5px;
 }
 
+.partlist .price {
+	margin-left:			10px;
+	font-size:				smaller;
+}
+h2 .price {
+	font-size:				12px;
+}
+
 
 #pulses {
 	position:				absolute;

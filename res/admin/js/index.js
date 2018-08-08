@@ -82,6 +82,104 @@ $(document).ready(function() {
 
 //Cache update
 var cache = {print: false, showPins: true, force: false, toPx: 1/*4*133.4/380*/, arduino: {leds: [], jacks: [], potentiometers: [], switches: []}, modules: []}, cacheTmp = {};
+var prices = {
+	jacks: [
+		{
+			source: "http://fr.farnell.com/cliff-electronic-components/fc681374v/connecteur-audio-jack-3-5mm-3pos/dp/2431939",
+			prices: {
+				"1":    0.998,
+				"50":   0.58,
+				"100":  0.504,
+				"250":  0.471,
+				"500":  0.438,
+				"1500": 0.416
+			}
+		}
+	],
+	audioJacks: [
+		{
+			source: "http://fr.farnell.com/cliff-electronic-components/fc681374v/connecteur-audio-jack-3-5mm-3pos/dp/2431939",
+			prices: {
+				"1":    0.998,
+				"50":   0.58,
+				"100":  0.504,
+				"250":  0.471,
+				"500":  0.438,
+				"1500": 0.416
+			}
+		}
+	],
+	potentiometers: [
+		{
+			source: "http://fr.farnell.com/bi-technologies-tt-electronics/p160knp-0qc20b10k/potentiometre-rotatif-10k-20mm/dp/1760793",
+			prices: {
+				"1":    0.944,
+				"10":   0.769,
+				"25":   0.574,
+				"50":   0.508,
+				"100":  0.387,
+				"300":  0.363,
+				"1500": 0.305
+			}
+		}
+	],
+	boards: [
+		{
+			source: "https://www.amazon.fr/ELEGOO-ATMEGA-Contrôleur-Module-Arduino/dp/B06XNPKSDK/ref=sr_1_1_sspa?s=computers&rps=1&ie=UTF8&qid=1533744358&sr=1-1-spons&keywords=Arduino+MEGA&refinements=p_76%3A437878031&psc=1",
+			prices: {
+				"1":    12.99,
+			}
+		}
+	],
+	wires: [
+		{
+			source: "https://www.amazon.fr/Daorier-Multicolore-Breadboard-Arduino-Male-Male/dp/B0727QSPR7/ref=sr_1_10?s=computers&ie=UTF8&qid=1533744616&sr=1-10&keywords=Arduino+cable+DuPont",
+			prices: {
+				"1":    1.61/(40*3),
+			}
+		}
+	],
+	leds: [
+		{
+			source: "http://fr.farnell.com/kingbright/l-1503gc/led-5mm-vert-100mcd-568nm/dp/2335730?MER=bn_level5_5NP_EngagementRecSingleItem_4",
+			prices: {
+				"1":    0.0739,
+				"5":    0.0739,
+				"25":   0.0709,
+				"100":  0.0679,
+				"250":  0.0649,
+				"500":  0.062,
+				"1000": 0.0589
+			}
+		},
+		{
+			source: "http://fr.farnell.com/multicomp/mcre000033/resistance-couche-carbon-125mw/dp/1700232?st=470%20ohm%20resistance",
+			prices: {
+				"1": 0.0198,
+				"5": 0.0198,
+				"50": 0.0171,
+				"250": 0.0143,
+				"500": 0.0129,
+				"1000": 0.0115,
+				"2000": 0.0091,
+				"10000": 0.0058
+			}
+		}		
+	],
+	switches: [
+		{
+			source: "http://fr.farnell.com/multicomp/1md1t1b5m1qe/interrupteur-dpdt/dp/9473394",
+			prices: {
+				"1": 1.70,
+				"15": 1.63,
+				"25": 1.40,
+				"100": 1.22,
+				"150": 1.15,
+				"250": 0.977
+			}
+		}		
+	],
+}
 //133.4mm = 380px (VCV)
 function updateCache(step) {
 	if(step == "force") {
@@ -183,18 +281,20 @@ function updateCache(step) {
 			if(cache.modules.length) {
 				var jal = cache.modules[cache.modules.length-1].jal.out;
 				cache.partList = {
-					jacks: 			floor(jal.jacks / cache.arduino.jacks.length),
-					potentiometers: floor(jal.potentiometers / cache.arduino.potentiometers.length),
-					switches:       floor(jal.switches / cache.arduino.switches.length),
-					leds: 			floor(jal.leds / cache.arduino.leds.length),
-					audioJacks:      0
+					jacks: 			{value: floor(jal.jacks / cache.arduino.jacks.length)},
+					potentiometers: {value: floor(jal.potentiometers / cache.arduino.potentiometers.length)},
+					switches:       {value: floor(jal.switches / cache.arduino.switches.length)},
+					leds: 			{value: floor(jal.leds / cache.arduino.leds.length)},
+					wires:          {value: 0},
+					boards:         {value: 0},
+					audioJacks:     {value: 0}
 				};
-				cache.partList.boards         = max(max(cache.partList.jacks, cache.partList.potentiometers), cache.partList.leds) + 1;
-				cache.partList.jacks          = jal.jacks;
-				cache.partList.potentiometers = jal.potentiometers;
-				cache.partList.switches       = jal.switches;
-				cache.partList.leds           = jal.leds;
-				cache.partList.wires          = (1*cache.partList.jacks + 3*cache.partList.potentiometers + 2*cache.partList.leds) + max(0,cache.partList.boards-1)*4;
+				cache.partList.boards.value         = max(max(cache.partList.jacks.value, cache.partList.potentiometers.value), cache.partList.leds.value) + 1;
+				cache.partList.jacks.value          = jal.jacks;
+				cache.partList.potentiometers.value = jal.potentiometers;
+				cache.partList.switches.value       = jal.switches;
+				cache.partList.leds.value           = jal.leds;
+				cache.partList.wires.value          = (1*cache.partList.jacks.value + 3*cache.partList.potentiometers.value + 2*cache.partList.leds.value) + max(0,cache.partList.boards.value-1)*4;
 			
 				//Avg board ID for each module
 				$.each(cache.modules, function(index, module) {
@@ -211,19 +311,43 @@ function updateCache(step) {
 				
 					//Audio
 					if(module.audio)
-						cache.partList.audioJacks += module.audio.inputs.length + module.audio.outputs.length;
+						cache.partList.audioJacks.value += module.audio.inputs.length + module.audio.outputs.length;
 				});
 				
-				$("#nbBoards>span")        .text("× " + cache.partList.boards);
-				$("#nbJacks>span")         .text("× " + cache.partList.jacks);
-				$("#nbAudioJacks>span")    .text("× " + cache.partList.audioJacks);
-				$("#nbPotentiometers>span").text("× " + cache.partList.potentiometers);
-				$("#nbSwitches>span")      .text("× " + cache.partList.switches);
-				$("#nbLEDs>span")          .text("× " + cache.partList.leds);
-				$("#nbWires>span")         .text("× " + cache.partList.wires);
+				//Price list and display
+				var totalPrice = 0;
+				$.each(cache.partList, function(type, part) {
+					var html = "× " + part.value;
+					
+					part.price = undefined;
+					if((prices[type]) && (prices[type].length)) {
+						var currentPriceMin = "";
+						for(var i = 0 ; i < prices[type].length ; i++) {
+							$.each(prices[type][i].prices, function(priceMin, price) {
+								if(part.value >= parseFloat(priceMin))
+									currentPriceMin = priceMin;
+							});
+							if(currentPriceMin != "") {
+								part.price = {
+									source: prices[type][i].source,
+									unit:  prices[type][i].prices[currentPriceMin]
+								};
+								part.price.total = ceil(part.price.unit * part.value);
+
+								html += "&nbsp;<a class='price' href='" + part.price.source + "' target='_blank'>~" + part.price.total + "€</a>";
+								totalPrice += part.price.total;
+							}
+						}
+					}
+					$("#nb" + type + ">span").html(html);
+				});
+				if(totalPrice > 0)
+					$("h2 .price").html(totalPrice + "€");
+				else
+					$("h2 .price").html("");
 				
 				var html = "";
-				for(var i = 0 ; i < cache.partList.boards ; i++)
+				for(var i = 0 ; i < cache.partList.boards.value ; i++)
 					html += "<div class='legend'><div class='color' style='background-color: " + app.baseColors[i%3].html + "'></div><div class='name'>To Board #" + (i+1) + "</div></div>";
 				if(cache.partList.audioJacks)
 					html += "<div class='legend'><div class='color' style='background-color: " + app.baseColors["audiocard"].html + "'></div><div class='name'>To Audiocard</div></div>";
@@ -354,107 +478,109 @@ function updateCache(step) {
 
 //Draw a potentiometer, a LED or a jack
 function drawItem(module, item) {
-	//Graphical container
-	item.container = new PIXI.Container();
-	item.container.position.x = item.pos.x;
-	item.container.position.y = item.pos.y;
-	module.container.addChild(item.container);
+	if(item) {
+		//Graphical container
+		item.container = new PIXI.Container();
+		item.container.position.x = item.pos.x;
+		item.container.position.y = item.pos.y;
+		module.container.addChild(item.container);
 	
-	var palette = app.baseColors[item.wiring.board%3];
-	if(palette == undefined)
-		palette = app.baseColors[item.wiring.board];
+		var palette = app.baseColors[item.wiring.board%3];
+		if(palette == undefined)
+			palette = app.baseColors[item.wiring.board];
 	
-	//Visual icon + color + offsets
-	var color = palette.stroke, textColor = palette.background, textOffset = {x: 0, y: 0}, textSize = 9;
-	if     (item.type == "potentiometer") {
-		textColor = palette.stroke;
-		item.container.drawing = PIXI.Sprite.from(cache.resources.icn_knob.texture);
-		item.container.drawing.width = item.container.drawing.height = 40;
-		textOffset.y = -item.container.drawing.height * 0.62;
-	}
-	else if (item.type == "switch") {
-		textColor = palette.stroke;
-		item.container.drawing = PIXI.Sprite.from(cache.resources.icn_switch.texture);
-		item.container.drawing.width = item.container.drawing.height = 25;
-		textOffset.y = -item.container.drawing.height * 0.35;
-	}
-	else if((item.type == "jack_input") || (item.type == "jack_output") || (item.type == "jack_audio_input") || (item.type == "jack_audio_output")) {
-		if(item.type == "jack_input")
-			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_input.texture);
-		else if(item.type == "jack_audio_input")
- 			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_audio_input.texture);
- 		else if(item.type == "jack_audio_output") {
- 			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_audio_output.texture);
- 			textColor = palette.stroke;
+		//Visual icon + color + offsets
+		var color = palette.stroke, textColor = palette.background, textOffset = {x: 0, y: 0}, textSize = 9;
+		if     (item.type == "potentiometer") {
+			textColor = palette.stroke;
+			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_knob.texture);
+			item.container.drawing.width = item.container.drawing.height = 40;
+			textOffset.y = -item.container.drawing.height * 0.62;
+		}
+		else if (item.type == "switch") {
+			textColor = palette.stroke;
+			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_switch.texture);
+			item.container.drawing.width = item.container.drawing.height = 25;
+			textOffset.y = -item.container.drawing.height * 0.35;
+		}
+		else if((item.type == "jack_input") || (item.type == "jack_output") || (item.type == "jack_audio_input") || (item.type == "jack_audio_output")) {
+			if(item.type == "jack_input")
+				item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_input.texture);
+			else if(item.type == "jack_audio_input")
+	 			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_audio_input.texture);
+	 		else if(item.type == "jack_audio_output") {
+	 			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_audio_output.texture);
+	 			textColor = palette.stroke;
+			}
+			else {
+				item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_output.texture);
+				textColor = palette.stroke;
+			}
+			item.container.drawing.width = item.container.drawing.height = 30;
+			textOffset.y += -item.container.drawing.height * 0.675;
+		}
+		else if(item.type == "led") {
+			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_led.texture);
+			textSize = 8;
+			item.container.drawing.width = item.container.drawing.height = 12;
+			textOffset = {x: 0, y: -item.container.drawing.height * 0.9};
+		}
+	
+	
+		//Draw stuff
+		item.container.drawing.tint = color;
+		item.container.drawing.position.x = -item.container.drawing.width /2;
+		item.container.drawing.position.y = -item.container.drawing.height/2;
+		item.container.addChild(item.container.drawing);
+		item.container.drawing.item = item;
+	
+		//IDs
+		var mainID, secondId
+		if(cache.showPins) {
+			mainID   = item.wiring.pin;
+			secondId = (item.wiring.board == "audiocard")?("Audio " + item.id):("#" + item.id + " (" + (item.wiring.board+1) + ")")
 		}
 		else {
-			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_output.texture);
-			textColor = palette.stroke;
+			mainID   = item.id;
+			secondId = (item.wiring.board == "audiocard")?("Audio " + item.wiring.pin):(item.wiring.pin + " (" + (item.wiring.board+1) + ")");
 		}
-		item.container.drawing.width = item.container.drawing.height = 30;
-		textOffset.y += -item.container.drawing.height * 0.675;
-	}
-	else if(item.type == "led") {
-		item.container.drawing = PIXI.Sprite.from(cache.resources.icn_led.texture);
-		textSize = 8;
-		item.container.drawing.width = item.container.drawing.height = 12;
-		textOffset = {x: 0, y: -item.container.drawing.height * 0.9};
-	}
 	
-	
-	//Draw stuff
-	item.container.drawing.tint = color;
-	item.container.drawing.position.x = -item.container.drawing.width /2;
-	item.container.drawing.position.y = -item.container.drawing.height/2;
-	item.container.addChild(item.container.drawing);
-	item.container.drawing.item = item;
-	
-	//IDs
-	var mainID, secondId
-	if(cache.showPins) {
-		mainID   = item.wiring.pin;
-		secondId = (item.wiring.board == "audiocard")?("Audio " + item.id):("#" + item.id + " (" + (item.wiring.board+1) + ")")
-	}
-	else {
-		mainID   = item.id;
-		secondId = (item.wiring.board == "audiocard")?("Audio " + item.wiring.pin):(item.wiring.pin + " (" + (item.wiring.board+1) + ")");
-	}
-	
-	//Add main ID
-	item.container.drawingText = new PIXI.Text(mainID, {fontFamily : "OpenSans", fontWeight: 500, fill : textColor, fontSize: textSize});
-	item.container.drawingText.position.x = -item.container.drawingText.width/2 + textOffset.x;
-	item.container.drawingText.position.y =  item.container.drawing.height/2 + textOffset.y;
-	item.container.addChild(item.container.drawingText);
+		//Add main ID
+		item.container.drawingText = new PIXI.Text(mainID, {fontFamily : "OpenSans", fontWeight: 500, fill : textColor, fontSize: textSize});
+		item.container.drawingText.position.x = -item.container.drawingText.width/2 + textOffset.x;
+		item.container.drawingText.position.y =  item.container.drawing.height/2 + textOffset.y;
+		item.container.addChild(item.container.drawingText);
 
-	//Add wiring ID
-	item.container.drawingText2 = new PIXI.Text(secondId, {fontFamily : module.container.drawingText.style.fontFamily, fontWeight: 200, fontSize: max(7, textSize-3), fill : palette.stroke});
-	item.container.drawingText2.position.x = -item.container.drawingText2.width/2;
-	item.container.drawingText2.position.y =  item.container.drawing.height/2 + 1;
-	item.container.drawingText2.alpha = 0.75;
-	item.container.addChild(item.container.drawingText2);
+		//Add wiring ID
+		item.container.drawingText2 = new PIXI.Text(secondId, {fontFamily : module.container.drawingText.style.fontFamily, fontWeight: 200, fontSize: max(7, textSize-3), fill : palette.stroke});
+		item.container.drawingText2.position.x = -item.container.drawingText2.width/2;
+		item.container.drawingText2.position.y =  item.container.drawing.height/2 + 1;
+		item.container.drawingText2.alpha = 0.75;
+		item.container.addChild(item.container.drawingText2);
 	
-	//Events
-	cache.items.push(item.container);
-	item.container.drawing.interactive = true;
-	item.container.drawing.buttonMode = true;
-	item.container.drawing.on('pointerdown', function() {
-		var clickedItem = this.item.container;
-		$.each(cache.items, function(index, item) {
-			if(item != clickedItem)
-				item.alpha = 0.1;
-			else
-				item.scale.x = item.scale.y = 2;
+		//Events
+		cache.items.push(item.container);
+		item.container.drawing.interactive = true;
+		item.container.drawing.buttonMode = true;
+		item.container.drawing.on('pointerdown', function() {
+			var clickedItem = this.item.container;
+			$.each(cache.items, function(index, item) {
+				if(item != clickedItem)
+					item.alpha = 0.1;
+				else
+					item.scale.x = item.scale.y = 2;
+			});
 		});
-	});
-	item.container.drawing.on('pointerup', function() {
-		$.each(cache.items, function(index, item) {
-			if(item.alphaBefore != undefined)
-				item.alpha = item.alphaBefore;
-			else
-				item.alpha = 1;
-			item.scale.x = item.scale.y = 1;
+		item.container.drawing.on('pointerup', function() {
+			$.each(cache.items, function(index, item) {
+				if(item.alphaBefore != undefined)
+					item.alpha = item.alphaBefore;
+				else
+					item.alpha = 1;
+				item.scale.x = item.scale.y = 1;
+			});
 		});
-	});
+	}
 }
 
 //Websockets reception
