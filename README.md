@@ -57,6 +57,7 @@ If you want to control VCV Rack from OSC (instead of Arduino), here are the main
 ```
 
 ### Wires
+Be careful, only plug outputs on inputs. However, you can permute the arguments in the OSC messages.
 ```
 /link <jackId source> <jackId destination> <0|1 : remove or add a wire>
 /link/clear
