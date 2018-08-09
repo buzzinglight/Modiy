@@ -135,13 +135,15 @@ void OSCManagement::send(const char *address, const std::string &message) {
     packet << osc::BeginMessage(address) << message.c_str() << osc::EndMessage;
     transmitSocket.Send(packet.Data(), packet.Size());
 }
-void OSCManagement::send(const char *address, int valueIndex, unsigned int moduleId, unsigned int valueId, const Vec &position, float valueAbsolute, float valueNormalized, int extraInfo) {
+void OSCManagement::send(const char *address, int valueIndex, unsigned int moduleId, unsigned int valueId, const Vec &position, float valueAbsolute, float valueNormalized, int extraInfo1, int extraInfo2) {
     UdpTransmitSocket transmitSocket(IpEndpointName(rtBrokerIp, rtBrokerPort));
     osc::OutboundPacketStream packet(buffer, 1024);
 
     packet << osc::BeginMessage(address) << valueIndex << (int)moduleId << (int)valueId << position.x << position.y << valueAbsolute << valueNormalized;
-    if(extraInfo != -9999)
-        packet << extraInfo;
+    if(extraInfo1 != -9999)
+        packet << extraInfo1;
+    if(extraInfo2 != -9999)
+        packet << extraInfo2;
     packet << osc::EndMessage;
     transmitSocket.Send(packet.Data(), packet.Size());
 }

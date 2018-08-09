@@ -59,7 +59,7 @@ private:
 
 public:
     void send(const char *address, const std::string &message);
-    void send(const char *address, int valueIndex, unsigned int moduleId, unsigned int valueId, const Vec &position, float valueAbsolute, float valueNormalized, int extraInfo = -9999);
+    void send(const char *address, int valueIndex, unsigned int moduleId, unsigned int valueId, const Vec &position, float valueAbsolute, float valueNormalized, int extraInfo1 = -9999, int extraInfo2 = -9999);
     void send(const char *address, unsigned int moduleId, const std::string &slug, const std::string &name, const std::string &author, const std::string &nameInRack, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbPotentiometers, unsigned int nbSwitches, unsigned int nbLEDs);
     void send(const char *address, float value);
     void send(const char *address);

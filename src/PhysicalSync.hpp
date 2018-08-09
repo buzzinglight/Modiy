@@ -17,31 +17,33 @@
 #include <algorithm>
 
 //Classes needed for module caching
-class LED {
-public:
+struct Potentiometer {
+    ParamWidget *widget;
+};
+struct Switch {
+    bool isToggle = false, hasLED = false;
+    ParamWidget *widget;
+};
+struct LED {
     Light light;
     MultiLightWidget *widget = NULL;
 };
-class JackInput {
-public:
+struct Jack {
+    Port *port = NULL;
+};
+struct JackInput : Jack {
     Input input;
-    Port *port = NULL;
 };
-class JackOutput {
-public:
+struct JackOutput : Jack {
     Output output;
-    Port *port = NULL;
 };
-
-class JackWire {
-public:
+struct JackWire {
     WireWidget *widget = NULL;
     int inputModuleId  = -1;
     int outputModuleId = -1;
-public:
     static std::vector<JackWire> wires;
 };
-class Modul {
+struct Modul {
 public:
     static std::vector<std::string> modulesIgnoredStr;
     static std::vector<Modul> modules, modulesWithIgnored;
@@ -49,14 +51,13 @@ public:
     static void fromJson(json_t *rootJ);
 
 public:
-    inline bool isIgnored() const {
-        return (std::find(Modul::modulesIgnoredStr.begin(), Modul::modulesIgnoredStr.end(), name) != Modul::modulesIgnoredStr.end());
-    }
+    inline bool isIgnored() const { return (std::find(Modul::modulesIgnoredStr.begin(), Modul::modulesIgnoredStr.end(), name) != Modul::modulesIgnoredStr.end()); }
 
 public:
     ModuleWidget *widget = NULL;
     std::vector<LED> leds;
-    std::vector<ParamWidget*> potentiometers, switches;
+    std::vector<Potentiometer> potentiometers;
+    std::vector<Switch> switches;
     std::vector<JackInput> inputs;
     std::vector<JackOutput> outputs;
     std::string name;
@@ -65,7 +66,7 @@ public:
 };
 
 //LED Widget variable helper
-class LEDvars {
+struct LEDvars {
 public:
     float value = 0, valueRounded = 0, valueRoundedOld = -1;
 public:
@@ -75,31 +76,22 @@ public:
 //Menu item
 struct PhysicalSync;
 struct RTBrokerMenu : MenuItem {
-public:
     PhysicalSync *physicalSync;
     const char *oscMessage;
-
-public:
     void onAction(EventAction &e) override;
 };
 struct AudioPresetMenu : MenuItem {
-public:
     PhysicalSync *physicalSync;
     int nbChannels;
-
-public:
     void onAction(EventAction &e) override;
 };
 struct IgnoreModuleMenu : MenuItem {
-public:
     PhysicalSync *physicalSync;
     std::string moduleName;
-
-public:
     void onAction(EventAction &e) override;
 };
 
-//Main class
+//Main struct
 struct PhysicalSync : Module, OSCRemote {
 public:
     //Interfaces
@@ -160,7 +152,7 @@ private:
     unsigned int currentNbChannels = min(AUDIO_INPUTS, AUDIO_OUTPUTS);
 
     //LED variables
-    LEDvars ledStatusInt, pingLED;
+    LEDvars ledStatusInt, pingLED, cacheCounter;
     std::string rtBrokerPath;
     bool rtBrokerFound = false, isRTBrokerTalking = false;
     int isRTBrokerTalkingCounter = 0;
@@ -172,17 +164,18 @@ private:
     inline void logToOsc(std::string message);
 
     //Cache management
-    bool updateCacheNeeded = true;
+    float updateCacheLastTime = 0;
+    int updateCacheCounter = 0;
     void updateCache(bool force = false);
 
     //Getters
-    JackInput    getInputPort    (unsigned int moduleId, unsigned int inputId);
-    JackOutput   getOutputPort   (unsigned int moduleId, unsigned int outputId);
-    ParamWidget* getPotentiometer(unsigned int moduleId, unsigned int potentiometerId);
-    ParamWidget* getSwitch       (unsigned int moduleId, unsigned int switchId);
-    LED          getLED          (unsigned int moduleId, unsigned int ledId);
-    Modul getModule       (unsigned int moduleId);
-    JackWire     getWire         (unsigned int inputModuleId, unsigned int inputPortId, unsigned int outputModuleId, unsigned int outputPortId);
+    JackInput     getInputPort    (unsigned int moduleId, unsigned int inputId);
+    JackOutput    getOutputPort   (unsigned int moduleId, unsigned int outputId);
+    Potentiometer getPotentiometer(unsigned int moduleId, unsigned int potentiometerId);
+    Switch        getSwitch       (unsigned int moduleId, unsigned int switchId);
+    LED           getLED          (unsigned int moduleId, unsigned int ledId);
+    Modul         getModule       (unsigned int moduleId);
+    JackWire      getWire         (unsigned int inputModuleId, unsigned int inputPortId, unsigned int outputModuleId, unsigned int outputPortId);
 
 //OSC Remote methods
 public:

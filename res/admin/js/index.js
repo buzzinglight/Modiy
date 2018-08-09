@@ -8,7 +8,8 @@ $(document).ready(function() {
 		  .add('icn_jack_input', 		'img/icn_jack_input.png')
 		  .add('icn_jack_output', 		'img/icn_jack_output.png')
 		  .add('icn_knob', 				'img/icn_knob.png')
-		  .add('icn_switch', 			'img/icn_switch.png')
+		  .add('icn_switchT', 			'img/icn_switchT.png')
+		  .add('icn_switchM', 			'img/icn_switchM.png')
 		  .add('icn_led', 				'img/icn_led.png');
 	loader.load((loader, resources) => {
 		cache.resources = resources;
@@ -48,7 +49,7 @@ $(document).ready(function() {
 			//LEDs refresh
 			setInterval(function() {
 				updateCache();
-			}, 1000);
+			}, 2000);
 			
 			//Show pins
 			$("#showPins").click(function() {
@@ -85,6 +86,7 @@ var cache = {print: false, showPins: true, force: false, toPx: 1/*4*133.4/380*/,
 var prices = {
 	jacks: [
 		{
+			name:   "Jacks",
 			source: "http://fr.farnell.com/cliff-electronic-components/fc681374v/connecteur-audio-jack-3-5mm-3pos/dp/2431939",
 			prices: {
 				"1":    0.998,
@@ -98,11 +100,12 @@ var prices = {
 	],
 	audioJacks: [
 		{
+			name:   "Jacks",
 			source: "http://fr.farnell.com/multicomp/mj-074n/embase-jack-3-5mm-3p/dp/1267374",
 			prices: {
-				"1": 1.15,
-				"25": 0.954,
-				"75": 0.79,
+				"1":   1.15,
+				"25":  0.954,
+				"75":  0.79,
 				"150": 0.674,
 				"250": 0.587,
 				"500": 0.521
@@ -111,7 +114,9 @@ var prices = {
 	],
 	potentiometers: [
 		{
-			source: "http://fr.farnell.com/bi-technologies-tt-electronics/p160knp-0ec15b10k/potentiometre-rotatif-10k-15mm/dp/1684813",
+			name:      "Potentiometer",
+			source:    "http://fr.farnell.com/bi-technologies-tt-electronics/p160knp-0qc20b10k/potentiometre-rotatif-10k-20mm/dp/1760793",
+			sourceAlt: "http://fr.farnell.com/bi-technologies-tt-electronics/p160knp-0ec15b10k/potentiometre-rotatif-10k-15mm/dp/1684813",
 			prices: {
 				"1":    0.954,
 				"10":   0.673,
@@ -123,42 +128,47 @@ var prices = {
 			}
 		},
 		{
-			source: "http://fr.farnell.com/multicomp/mc21054/bouton-molete-rond-20mm-plastique/dp/2543072",
+			name:   "Plastic knobs",
+			source: "http://fr.farnell.com/multicomp/mc21063/bouton-molete-rond-13mm-rouge/dp/2543082",
 			prices: {
-				"5": 0.707,
-				"75": 0.573,
-				"150": 0.408,
-				"250": 0.364,
-				"500": 0.325,
-				"1500": 0.273
+				"5":    0.561,
+				"75":   0.454,
+				"150":  0.323,
+				"250":  0.289,
+				"500":  0.258,
+				"1500": 0.217
 			}
 		}
 	],
 	boards: [
 		{
+			name:   "Board",
 			source: "https://www.amazon.fr/ELEGOO-ATMEGA-Contrôleur-Module-Arduino/dp/B06XNPKSDK/ref=sr_1_1_sspa?s=computers&rps=1&ie=UTF8&qid=1533744358&sr=1-1-spons&keywords=Arduino+MEGA&refinements=p_76%3A437878031&psc=1",
 			prices: {
-				"1":    12.99,
+				"1": 12.99,
 			}
 		},
 		{
+			name:   "Enclosure",
 			source: "https://www.amazon.fr/Boîtier-acrylique-transparent-brillant-Arduino/dp/B01CS5RQ7O/ref=sr_1_5?ie=UTF8&qid=1533746020&sr=8-5&keywords=Arduino+Mega+case",
 			prices: {
-				"1":    2.69,
+				"1": 2.69,
 			}
 		}
 		
 	],
 	wires: [
 		{
+			name:   "Wires",
 			source: "https://www.amazon.fr/Daorier-Multicolore-Breadboard-Arduino-Male-Male/dp/B0727QSPR7/ref=sr_1_10?s=computers&ie=UTF8&qid=1533744616&sr=1-10&keywords=Arduino+cable+DuPont",
 			prices: {
-				"1":    1.61/(40*3),
+				"1": 1.61 / (40*3),
 			}
 		}
 	],
 	leds: [
 		{
+			name:   "LEDs",
 			source: "http://fr.farnell.com/kingbright/l-1503gc/led-5mm-vert-100mcd-568nm/dp/2335730?MER=bn_level5_5NP_EngagementRecSingleItem_4",
 			prices: {
 				"5":    0.0739,
@@ -170,33 +180,50 @@ var prices = {
 			}
 		},
 		{
+			name:   "470Ω Resistor",
 			source: "http://fr.farnell.com/multicomp/mcre000033/resistance-couche-carbon-125mw/dp/1700232?st=470%20ohm%20resistance",
 			prices: {
-				"5": 0.0198,
-				"50": 0.0171,
-				"250": 0.0143,
-				"500": 0.0129,
-				"1000": 0.0115,
-				"2000": 0.0091,
+				"5":     0.0198,
+				"50":    0.0171,
+				"250":   0.0143,
+				"500":   0.0129,
+				"1000":  0.0115,
+				"2000":  0.0091,
 				"10000": 0.0058
 			}
 		}		
 	],
-	switches: [
+	switchesT: [
 		{
-			source: "http://fr.farnell.com/multicomp/1md1t1b5m1qe/interrupteur-dpdt/dp/9473394",
+			name:      "Toggle switches",
+			source:    "http://fr.farnell.com/multicomp/1md1t1b5m1qe/interrupteur-dpdt/dp/9473394",
 			prices: {
-				"1": 1.70,
-				"15": 1.63,
-				"25": 1.40,
+				"1":   1.70,
+				"15":  1.63,
+				"25":  1.40,
 				"100": 1.22,
 				"150": 1.15,
 				"250": 0.977
 			}
 		}		
 	],
+	switchesM: [
+		{
+			name:      "Momentary switches",
+			source:    "http://fr.farnell.com/multicomp/r13-24a-05-bb/switch-spst-3a-125v-solder/dp/1634687",
+			prices: {
+				"5":    1.30,
+				"25":   1.05,
+				"100":  0.747,
+				"150":  0.667,
+				"250":  0.595,
+				"1000": 0.501
+			}
+		}		
+	],
 	audioInterface: [
 		{
+			name:   "Audio interfaces",
 			source: "https://www.amazon.fr/Firepower-BEHRINGER-FCA1616-Interface-compatible/dp/B00E87OK1G/ref=pd_cp_267_1?_encoding=UTF8&pd_rd_i=B00E87OK1G&pd_rd_r=ade416d4-9b2d-11e8-9d26-3fe4c7b0301a&pd_rd_w=amqPT&pd_rd_wg=WcnoM&pf_rd_i=desktop-dp-sims&pf_rd_m=A1X6FK5RDHNB96&pf_rd_p=2171515611131751452&pf_rd_r=F9YH3QZE272RV2A33TGM&pf_rd_s=desktop-dp-sims&pf_rd_t=40701&psc=1&refRID=F9YH3QZE272RV2A33TGM",
 			prices: {
 				"1": 225,
@@ -227,10 +254,9 @@ function updateCache(step) {
 			cache.force = false;
 			if(cache.modulesSerialized == undefined)	cache.modulesSerialized = "";
 			console.log("Modules refreshed (" + cache.force + " / " + (cache.modulesSerialized != modulesSerializedTmp) + " / " + cache.modulesSerialized.length + "," + modulesSerializedTmp.length + ")");
-			console.log(cache);
 			
 			//End of refresh
-			delete cacheTmp.jal;
+			delete cacheTmp.jals;
 			
 			//Copy into modules
 			cache.modulesSerialized = modulesSerializedTmp;
@@ -303,25 +329,70 @@ function updateCache(step) {
 			
 			//Calculate electronic/hardware needs
 			if(cache.modules.length) {
-				var jal = cache.modules[cache.modules.length-1].jal.out;
+				//Calculate JALS
+				cache.jals        = {jacks: 0, potentiometers: 0, switches: 0, leds: 0, audioJacks: 0, switchesM: 0, switchesT: 0, wires: 0};
+				cache.consumption = {jacks: 0, potentiometers: 0, switches: 0, leds: 0, total: 0};
+				$.each(cache.modules, function(index, module) {
+					//In + Size
+					module.jals.in = JSON.parse(JSON.stringify(cache.jals));
+					module.jals.size = {
+						jacks: 			(module.nbInputs+module.nbOutputs),
+						potentiometers:  module.nbPotentiometers,
+						switches: 		 module.nbSwitches,
+						leds: 			 module.nbLights,
+						audioJacks: 	 (module.audio)?(module.audio.inputs.length + module.audio.outputs.length):(0),
+						switchesM: 	 	 0,
+						switchesT: 	 	 0,
+						wires:           0,
+						boards: 		 0, 
+					};
+					module.jals.consumption = {
+						jacks: 			module.jals.size.jacks          / cache.arduino.jacks.length,
+						potentiometers: module.jals.size.potentiometers / cache.arduino.potentiometers.length,
+						switches: 		module.jals.size.switches       / cache.arduino.switches.length,
+						leds: 			module.jals.size.leds           / cache.arduino.leds.length,
+					};
+					
+					//Wires
+					module.jals.size.wires = (1*module.jals.size.jacks + 3*module.jals.size.potentiometers + 2*module.jals.size.leds);
+
+					//Add switches or buttons
+					$.each(module.switches, function(index, button) {
+						if(button.isToggle)	module.jals.size.switchesT++;
+						else				module.jals.size.switchesM++;
+					});
+
+					//Calculate jacks, potentiometers and LEDs quantities
+					$.each(cache.jals, function(type, value) {
+						cache.jals[type] += module.jals.size[type];
+					});
+
+					//Post-processing
+					module.jals.out = JSON.parse(JSON.stringify(cache.jals));
+					
+					//Add a part of boards
+					$.each(module.jals.consumption, function(type, value) {
+						if(type != "total")
+							cache.consumption[type] += module.jals.consumption[type];
+					});
+				});
+				
+				//List of items to buy
 				cache.partList = {
-					jacks: 			{value: floor(jal.jacks / cache.arduino.jacks.length)},
-					potentiometers: {value: floor(jal.potentiometers / cache.arduino.potentiometers.length)},
-					switches:       {value: floor(jal.switches / cache.arduino.switches.length)},
-					leds: 			{value: floor(jal.leds / cache.arduino.leds.length)},
-					wires:          {value: 0},
+					jacks: 			{value: cache.jals.jacks},
+					potentiometers: {value: cache.jals.potentiometers},
+					leds: 			{value: cache.jals.leds},
+					switchesT:      {value: cache.jals.switchesT},
+					switchesM:      {value: cache.jals.switchesM},
+					audioJacks:     {value: cache.jals.audioJacks},
+					audioInterface: {value: ceil(cache.jals.audioJacks / 16)}, //<— based on a 16-channel audio interface
+					wires:          {value: cache.jals.wires},
 					boards:         {value: 0},
-					audioJacks:     {value: 0},
-					audioInterface: {value: 0}
 				};
-				cache.partList.boards.value         = max(max(cache.partList.jacks.value, cache.partList.potentiometers.value), cache.partList.leds.value) + 1;
-				cache.partList.jacks.value          = jal.jacks;
-				cache.partList.potentiometers.value = jal.potentiometers;
-				cache.partList.switches.value       = jal.switches;
-				cache.partList.leds.value           = jal.leds;
-				cache.partList.wires.value          = (1*cache.partList.jacks.value + 3*cache.partList.potentiometers.value + 2*cache.partList.leds.value) + max(0,cache.partList.boards.value-1)*4;
+				cache.partList.boards.value += max(max(floor(cache.jals.jacks / cache.arduino.jacks.length), floor(cache.jals.potentiometers / cache.arduino.potentiometers.length)), floor(cache.jals.leds / cache.arduino.leds.length)) + 1;
+				cache.partList.wires.value  += max(0,cache.partList.boards.value-1) * 4;
 			
-				//Avg board ID for each module
+				//Avg board ID for each module + consumption
 				$.each(cache.modules, function(index, module) {
 					//ID
 					module.wiring.board = 0;
@@ -333,49 +404,100 @@ function updateCache(step) {
 						}
 					});
 					module.wiring.board = maxBoard.index;
-				
-					//Audio
-					if(module.audio)
-						cache.partList.audioJacks.value += module.audio.inputs.length + module.audio.outputs.length;
-				});
-				cache.partList.audioInterface.value = ceil(cache.partList.audioJacks.value / 16);
-				
-				//Price list and display
-				var totalPrice = 0;
-				$.each(cache.partList, function(type, part) {
-					var html = "× " + part.value;
 					
-					part.price = undefined;
+					module.jals.size.boards = 0;
+					$.each(module.jals.consumption, function(type, value) {
+						if(type != "total") {
+							if(cache.consumption[type] > 0)
+								module.jals.consumption[type] /= cache.consumption[type];
+							module.jals.size.boards += module.jals.consumption[type];
+						}
+					});
+					cache.consumption.total += module.jals.size.boards;
+				});
+				
+				//Affect a price to each component regarding its quantity
+				$.each(cache.partList, function(type, part) {
+					part.remaining = part.value;
+					part.price = [];
 					if((prices[type]) && (prices[type].length)) {
 						for(var i = 0 ; i < prices[type].length ; i++) {
 							var currentPriceMin = "";
 							$.each(prices[type][i].prices, function(priceMin, price) {
-								if((currentPriceMin == "") || (part.value >= parseFloat(priceMin)))
+								if((currentPriceMin == "") || (part.remaining >= parseFloat(priceMin)))
 									currentPriceMin = priceMin;
 							});
 							if(currentPriceMin != "") {
-								part.price = {
+								part.price.push({
+									name:   prices[type][i].name,
 									source: prices[type][i].source,
-									unit:  prices[type][i].prices[currentPriceMin]
-								};
-								part.price.total = part.price.unit * part.value;
-
-								if(i > 0)
-									html += "&nbsp;+";
-								html += "&nbsp;<a class='price' href='" + part.price.source + "' target='_blank'>" + ceil(part.price.total) + "€</a>";
-
-								if(type != "audioInterface")
-									totalPrice += part.price.total;
+									unit:   prices[type][i].prices[currentPriceMin],
+									total:  0
+								});
 							}
 						}
 					}
-					$("#nb" + type + ">span").html(html);
 				});
-				if(totalPrice > 0)
-					$("h2 .price").html(ceil(totalPrice) + "€");
+				
+				//Cost by module
+				var totalPrice = {modules: 0, shared: 0, optional: 0};
+				$.each(cache.modules, function(index, module) {
+					module.price = {total: 0, details: {}};
+					
+					//For each part…
+					$.each(cache.partList, function(type, part) {
+						module.price.details[type] = 0;
+						if(module.jals.size[type]) {
+							for(var i = 0 ; i < part.price.length ; i++) {
+								var price = part.price[i].unit * module.jals.size[type];
+								module.price.details[type]  = price;
+								part.price[i].total        += price;
+								module.price.total         += price;
+							}
+							cache.partList[type].remaining -= module.jals.size[type];
+						}
+					});
+
+					//Total price
+					totalPrice.modules += module.price.total;
+				});
+
+				//Shared costs
+				$.each(cache.partList, function(type, part) {
+					if(part.remaining) {
+						for(var i = 0 ; i < part.price.length ; i++) {
+							var price = part.price[i].unit * part.remaining;
+							part.price[i].total += price;
+							if(type != "audioInterface")
+								totalPrice.shared   += price;
+							else
+								totalPrice.optional += price;
+						}
+						cache.partList[type].remaining -= part.remaining;
+					}
+				});
+				totalPrice.total = totalPrice.shared + totalPrice.modules;
+				
+				//Check if there is no remaining/forgotten parts
+				console.log(cache.modules);
+				console.log(totalPrice, JSON.parse(JSON.stringify(cache.partList)));
+				
+				//Price display by parts
+				$.each(cache.partList, function(type, part) {
+					var html = "× " + part.value;
+					for(var i = 0 ; i < prices[type].length ; i++) {
+						if(i > 0)
+							html += "&nbsp;+";
+						html += "&nbsp;<a class='price' title='" + part.price[i].name + "' href='" + part.price[i].source + "' target='_blank'>" + ceil(part.price[i].total) + "€</a>";
+						$("#nb" + type + ">span").html(html);
+					}
+				});
+				if(totalPrice.total > 0)
+					$("h2 .price").html(ceil(totalPrice.total) + "€");
 				else
 					$("h2 .price").html("");
-				
+
+				//Boards legend
 				var html = "";
 				for(var i = 0 ; i < cache.partList.boards.value ; i++)
 					html += "<div class='legend'><div class='color' style='background-color: " + app.baseColors[i%3].html + "'></div><div class='name'>To Board #" + (i+1) + "</div></div>";
@@ -431,10 +553,7 @@ function updateCache(step) {
 				//Text on buttons
 				var introText = module.nameInRack;
 				module.container.drawingText  = new PIXI.Text(introText, {fontFamily : "revilo san", fontSize: 10, fill : app.baseColors[module.wiring.board%3].stroke});
-				module.container.drawingText2 = new PIXI.Text(
-					module.jal.in  .jacks + "-" + module.jal.in  .potentiometers + "-" + module.jal.in  .switches + "-" + module.jal.in  .leds + "\n" +
-					module.jal.size.jacks + "-" + module.jal.size.potentiometers + "-" + module.jal.size.switches + "-" + module.jal.size.leds
-					, {fontFamily : "Courier New", fontSize: 9, fill : app.baseColors[module.wiring.board%3].stroke});
+				module.container.drawingText2 = new PIXI.Text(ceil(module.price.total) + "€", {fontFamily : "revilo san", fontSize: 9, fill : app.baseColors[module.wiring.board%3].stroke});
 				module.container.drawingText .position.y = 3 + module.container.height / module.container.scale.y;
 				module.container.drawingText2.position.y = 3 + module.container.drawingText.position.y + module.container.drawingText.height;
 				module.container.drawingText2.alpha = module.container.drawingText2.alphaBefore = 0.5;
@@ -529,9 +648,16 @@ function drawItem(module, item) {
 		}
 		else if (item.type == "switch") {
 			textColor = palette.stroke;
-			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_switch.texture);
-			item.container.drawing.width = item.container.drawing.height = 25;
-			textOffset.y = -item.container.drawing.height * 0.35;
+			if(item.isToggle) {
+				item.container.drawing = PIXI.Sprite.from(cache.resources.icn_switchT.texture);
+				item.container.drawing.width = item.container.drawing.height = 25;
+				textOffset.y = -item.container.drawing.height * 0.35;
+			}
+			else {
+				item.container.drawing = PIXI.Sprite.from(cache.resources.icn_switchM.texture);
+				item.container.drawing.width = item.container.drawing.height = 25;
+				textOffset.y = -item.container.drawing.height * 0.70;
+			}
 		}
 		else if((item.type == "jack_input") || (item.type == "jack_output") || (item.type == "jack_audio_input") || (item.type == "jack_audio_output")) {
 			if(item.type == "jack_input")
@@ -626,10 +752,8 @@ function websocketReception(message) {
 
 		//Dumps reception
 		else if(message[0] == "/dump/modules") {
-			if(message[1] == "start") {
+			if(message[1] == "start")
 				cacheTmp.modules = [];
-				cacheTmp.jal = {jacks: 0, potentiometers: 0, switches: 0, leds: 0};
-			}
 			else if(message[1] == "end")
 				sendWebsockets("/dump/jacks");
 			else {
@@ -654,19 +778,8 @@ function websocketReception(message) {
 					potentiometers:	  [], 
 					switches:	      [], 
 					lights:	          [], 
-					jal: 		      {}
+					jals: 		      {}
 				};
-				module.jal.size = {jacks: (module.nbInputs+module.nbOutputs), potentiometers: module.nbPotentiometers, switches: module.nbSwitches, leds: module.nbLights};
-				module.jal.in   = JSON.parse(JSON.stringify(cacheTmp.jal));
-			
-				//Calculate jacks, potentiometers and LEDs quantities
-				cacheTmp.jal.jacks 		 	+= module.jal.size.jacks;
-				cacheTmp.jal.potentiometers += module.jal.size.potentiometers;
-				cacheTmp.jal.switches       += module.jal.size.switches;
-				cacheTmp.jal.leds  		 	+= module.jal.size.leds;
-
-				//Post-processing
-				module.jal.out   = JSON.parse(JSON.stringify(cacheTmp.jal));
 
 				//Add in container
 				cacheTmp.modules.push(module);
@@ -770,6 +883,8 @@ function websocketReception(message) {
 					switchId: parseInt(message[3], 10),
 					pos:  	  {x: mm(message[4]), y: mm(message[5])},
 					/*value: 	  {absolute: parseFloat(message[6]), normalized: parseFloat(message[7])}*/
+					isToggle: parseInt(message[8], 10),
+					hasLED:   parseInt(message[9], 10)
 				};
 
 				//Module reference
