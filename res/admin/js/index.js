@@ -82,7 +82,7 @@ $(document).ready(function() {
 
 
 //Cache update
-var cache = {print: false, showPins: true, force: false, toPx: 1/*4*133.4/380*/, arduino: {leds: [], jacks: [], potentiometers: [], switches: []}, modules: []}, cacheTmp = {};
+var cache = {print: false, showPins: true, force: false, arduino: {leds: [], jacks: [], potentiometers: [], switches: []}, modules: []}, cacheTmp = {};
 var prices = {
 	jacks: [
 		{
@@ -157,12 +157,21 @@ var prices = {
 		}
 		
 	],
-	wires: [
+	wiresMM: [
 		{
-			name:   "Wires",
+			name:   "Wires Male-Male",
 			source: "https://www.amazon.fr/Daorier-Multicolore-Breadboard-Arduino-Male-Male/dp/B0727QSPR7/ref=sr_1_10?s=computers&ie=UTF8&qid=1533744616&sr=1-10&keywords=Arduino+cable+DuPont",
 			prices: {
 				"1": 1.61 / (40*3),
+			}
+		}
+	],
+	wiresFF: [
+		{
+			name:   "Wires Female-Female",
+			source: "https://www.amazon.fr/Ganvol-40-câbles-20-dexpérimentation-dordinateur/dp/B01LWAXJJS/ref=sr_1_15?ie=UTF8&qid=1533917655&sr=8-15&keywords=dupont+connecteur",
+			prices: {
+				"1": 3.95 / 40,
 			}
 		}
 	],
@@ -330,7 +339,7 @@ function updateCache(step) {
 			//Calculate electronic/hardware needs
 			if(cache.modules.length) {
 				//Calculate JALS
-				cache.jals        = {jacks: 0, potentiometers: 0, switches: 0, leds: 0, audioJacks: 0, switchesM: 0, switchesT: 0, wires: 0};
+				cache.jals        = {jacks: 0, potentiometers: 0, switches: 0, leds: 0, audioJacks: 0, switchesM: 0, switchesT: 0, wiresMM: 0, wiresFF: 0};
 				cache.consumption = {jacks: 0, potentiometers: 0, switches: 0, leds: 0, total: 0};
 				$.each(cache.modules, function(index, module) {
 					//In + Size
@@ -343,7 +352,8 @@ function updateCache(step) {
 						audioJacks: 	 (module.audio)?(module.audio.inputs.length + module.audio.outputs.length):(0),
 						switchesM: 	 	 0,
 						switchesT: 	 	 0,
-						wires:           0,
+						wiresMM:         0,
+						wiresFF:         ((module.nbPotentiometers > 0) || (module.nbLights > 0))?(2):(0),
 						boards: 		 0, 
 					};
 					module.jals.consumption = {
@@ -354,7 +364,7 @@ function updateCache(step) {
 					};
 					
 					//Wires
-					module.jals.size.wires = (1*module.jals.size.jacks + 3*module.jals.size.potentiometers + 2*module.jals.size.leds);
+					module.jals.size.wiresMM = (1*module.jals.size.jacks + 3*module.jals.size.potentiometers + 2*module.jals.size.leds) + module.jals.size.wiresFF; // +wiresFF for power
 
 					//Add switches or buttons
 					$.each(module.switches, function(index, button) {
@@ -386,11 +396,12 @@ function updateCache(step) {
 					switchesM:      {value: cache.jals.switchesM},
 					audioJacks:     {value: cache.jals.audioJacks},
 					audioInterface: {value: ceil(cache.jals.audioJacks / 16)}, //<— based on a 16-channel audio interface
-					wires:          {value: cache.jals.wires},
+					wiresMM:        {value: cache.jals.wiresMM},
+					wiresFF:        {value: cache.jals.wiresFF},
 					boards:         {value: 0},
 				};
-				cache.partList.boards.value += max(max(floor(cache.jals.jacks / cache.arduino.jacks.length), floor(cache.jals.potentiometers / cache.arduino.potentiometers.length)), floor(cache.jals.leds / cache.arduino.leds.length)) + 1;
-				cache.partList.wires.value  += max(0,cache.partList.boards.value-1) * 4;
+				cache.partList.boards.value  += max(max(floor(cache.jals.jacks / cache.arduino.jacks.length), floor(cache.jals.potentiometers / cache.arduino.potentiometers.length)), floor(cache.jals.leds / cache.arduino.leds.length)) + 1;
+				cache.partList.wiresMM.value += max(0,cache.partList.boards.value-1) * 4;
 			
 				//Avg board ID for each module + consumption
 				$.each(cache.modules, function(index, module) {
@@ -519,9 +530,9 @@ function updateCache(step) {
 			$.each(cache.modules, function(index, module) {
 				//Check if module can fit the space (print only)
 				if(cache.print) {
-					if((rack.paper.current.x + module.size.width) > rack.paper.size.width) {
+					if((rack.paper.current.x + module.size.px.width) > rack.paper.size.width) {
 						rack.paper.current.x = 0;
-						rack.paper.current.y += module.size.height;
+						rack.paper.current.y += module.size.px.height;
 						rack.paper.current.y = ceil(rack.paper.current.y / (rack.paper.size.height/2)) * (rack.paper.size.height/2);
 					}
 				}
@@ -533,27 +544,26 @@ function updateCache(step) {
 					module.container.position.y = rack.paper.current.y;
 				}
 				else {
-					module.container.position.x = rack.scale * (module.pos.x);
-					module.container.position.y = rack.scale * (module.pos.y + floor(module.pos.y / module.size.height) * 40);
+					module.container.position.x = rack.scale * (module.pos.px.x);
+					module.container.position.y = rack.scale * (module.pos.px.y + floor(module.pos.px.y / module.size.px.height) * 40);
 				}
 				module.container.scale.x = rack.scale;
 				module.container.scale.y = rack.scale;
 				app.container.addChild(module.container);
 				
 				//Shit for next module
-				rack.paper.current.x += module.size.width * module.container.scale.x;
+				rack.paper.current.x += module.size.px.width * module.container.scale.x;
 			
 				//White rectangle for module
 				module.container.drawing = new PIXI.Graphics();
 				module.container.drawing.alpha = module.container.drawing.alphaBefore = 0.5;
 				module.container.drawing.lineStyle(1, app.baseColors[module.wiring.board%3].stroke);
-				module.container.drawing.drawRect(0, 0, module.size.width, module.size.height);
+				module.container.drawing.drawRect(0, 0, module.size.px.width, module.size.px.height);
 				module.container.addChild(module.container.drawing);
 
 				//Text on buttons
-				var introText = module.nameInRack;
-				module.container.drawingText  = new PIXI.Text(introText, {fontFamily : "revilo san", fontSize: 10, fill : app.baseColors[module.wiring.board%3].stroke});
-				module.container.drawingText2 = new PIXI.Text(ceil(module.price.total) + "€", {fontFamily : "revilo san", fontSize: 9, fill : app.baseColors[module.wiring.board%3].stroke});
+				module.container.drawingText  = new PIXI.Text(module.nameInRack, {fontFamily : "revilo san", fontSize: 10, fill : app.baseColors[module.wiring.board%3].stroke});
+				module.container.drawingText2 = new PIXI.Text(round(module.size.mm.width, 2) + " × " + round(module.size.mm.height, 2) + " mm\n" + ((module.price.total)?(ceil(module.price.total) + " €"):("")), {fontFamily : "revilo san", fontSize: 9, fill : app.baseColors[module.wiring.board%3].stroke});
 				module.container.drawingText .position.y = 3 + module.container.height / module.container.scale.y;
 				module.container.drawingText2.position.y = 3 + module.container.drawingText.position.y + module.container.drawingText.height;
 				module.container.drawingText2.alpha = module.container.drawingText2.alphaBefore = 0.5;
@@ -765,8 +775,8 @@ function websocketReception(message) {
 					name:       message[3],
 					author:     message[4],
 					nameInRack: message[5],
-					pos:  {x:     mm(message[6]), y:      mm(message[7])},
-					size: {width: mm(message[8]), height: mm(message[9])},
+					pos:  			  {px: {x:     parseFloat(message[6]), y:      parseFloat(message[7])}},
+					size: 			  {px: {width: parseFloat(message[8]), height: parseFloat(message[9])}},
 					nbInputs: 	      parseInt(message[10], 10),
 					nbOutputs: 	      parseInt(message[11], 10),
 					nbPotentiometers: parseInt(message[12], 10),
@@ -779,6 +789,16 @@ function websocketReception(message) {
 					switches:	      [], 
 					lights:	          [], 
 					jals: 		      {}
+				};
+				
+				//Eurorack size
+				module.size.mm = { // 1U = 44.45mm = 380px
+					width: 		(module.size.px.width  / 380 * 3) * 44.45,
+					height: 	(module.size.px.height / 380 * 3) * 44.45
+				};
+				module.size.eurorack = {
+					width: 		module.size.mm.width  / 5, //5.08
+					height: 	module.size.mm.height / 44.45,
 				};
 
 				//Add in container
@@ -796,7 +816,7 @@ function websocketReception(message) {
 					id:   	  		 parseInt(message[1], 10),
 					moduleId: 		 parseInt(message[2], 10),
 					inputOrOutputId: parseInt(message[3], 10),
-					pos:  	  		{x: mm(message[4]), y: mm(message[5])},
+					pos:  	  		{x: parseFloat(message[4]), y: parseFloat(message[5])},
 					active:   		(parseInt(message[6], 10) > 0.5),
 					/*value: 	     parseFloat(message[7]),*/
 					isInput:  		(parseInt(message[8], 10) > 0.5)
@@ -850,7 +870,7 @@ function websocketReception(message) {
 					id:   	          parseInt(message[1], 10),
 					moduleId:         parseInt(message[2], 10),
 					potentiometerId:  parseInt(message[3], 10),
-					pos:  	          {x: mm(message[4]), y: mm(message[5])},
+					pos:  	          {x: parseFloat(message[4]), y: parseFloat(message[5])},
 					/*value: 	      {absolute: parseFloat(message[6]), normalized: parseFloat(message[7])}*/
 				};
 
@@ -881,7 +901,7 @@ function websocketReception(message) {
 					id:   	  parseInt(message[1], 10),
 					moduleId: parseInt(message[2], 10),
 					switchId: parseInt(message[3], 10),
-					pos:  	  {x: mm(message[4]), y: mm(message[5])},
+					pos:  	  {x: parseFloat(message[4]), y: parseFloat(message[5])},
 					/*value: 	  {absolute: parseFloat(message[6]), normalized: parseFloat(message[7])}*/
 					isToggle: parseInt(message[8], 10),
 					hasLED:   parseInt(message[9], 10)
@@ -914,7 +934,7 @@ function websocketReception(message) {
 					id:   	  parseInt(message[1], 10),
 					moduleId: parseInt(message[2], 10),
 					lightId:  parseInt(message[3], 10),
-					pos:  	  {x: mm(message[4]), y: mm(message[5])},
+					pos:  	  {x: parseFloat(message[4]), y: parseFloat(message[5])},
 					/*value: 	  {absolute: parseFloat(message[6]), normalized: parseFloat(message[7])}*/
 				};
 
@@ -935,11 +955,6 @@ function websocketReception(message) {
 			}
 		}
 	}
-}
-
-
-function mm(val) {
-	return parseFloat(val) * cache.toPx;
 }
 
 
