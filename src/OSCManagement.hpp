@@ -1,6 +1,8 @@
 #ifndef OSCMANAGEMENT_H
 #define OSCMANAGEMENT_H
 
+#define OSC_BUFFER_SIZE 4096*4
+
 //Common
 #include "rack.hpp"
 
@@ -41,7 +43,7 @@ public:
     virtual void dumpJacks         (const char *address) = 0;
 
     //Communication
-    virtual void send(const char *message) = 0;
+    virtual void send(const char *address) = 0;
     virtual void pongReceived() = 0;
 };
 
@@ -52,15 +54,13 @@ public:
     OSCManagement(OSCRemote *_oscRemote, const std::string &_rtBrokerIp = "127.0.0.1", int _rtBrokerPort = 4001);
 
 private:
-    char buffer[1024];
     OSCRemote *oscRemote;
+public:
+    char buffer[OSC_BUFFER_SIZE];
     const char* rtBrokerIp;
     int rtBrokerPort;
 
 public:
-    void send(const char *address, const std::string &message);
-    void send(const char *address, int valueIndex, unsigned int moduleId, unsigned int valueId, const Vec &position, float valueAbsolute, float valueNormalized, int extraInfo1 = -9999, int extraInfo2 = -9999);
-    void send(const char *address, unsigned int moduleId, const std::string &slug, const std::string &name, const std::string &author, const std::string &nameInRack, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbPotentiometers, unsigned int nbSwitches, unsigned int nbLEDs);
     void send(const char *address, float value);
     void send(const char *address);
 

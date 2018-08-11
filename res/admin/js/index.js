@@ -3,14 +3,14 @@ var app;
 $(document).ready(function() {
 	//Cache of images
 	var loader = PIXI.loaders.shared;
-	loader.add('icn_jack_audio_input',  'img/icn_jack_audio_input.png')
-		  .add('icn_jack_audio_output', 'img/icn_jack_audio_output.png')
-		  .add('icn_jack_input', 		'img/icn_jack_input.png')
-		  .add('icn_jack_output', 		'img/icn_jack_output.png')
-		  .add('icn_knob', 				'img/icn_knob.png')
-		  .add('icn_switchT', 			'img/icn_switchT.png')
-		  .add('icn_switchM', 			'img/icn_switchM.png')
-		  .add('icn_led', 				'img/icn_led.png');
+	loader.add('jacks_audio_input',  	'img/icn_jack_audio_input.png')
+		  .add('jacks_audio_output', 	'img/icn_jack_audio_output.png')
+		  .add('jacks_input', 			'img/icn_jack_input.png')
+		  .add('jacks_output', 			'img/icn_jack_output.png')
+		  .add('potentiometers', 		'img/icn_knob.png')
+		  .add('switchesT', 			'img/icn_switchT.png')
+		  .add('switchesM', 			'img/icn_switchM.png')
+		  .add('leds', 					'img/icn_led.png');
 	loader.load((loader, resources) => {
 		cache.resources = resources;
 		
@@ -88,6 +88,7 @@ var prices = {
 		{
 			name:   "Jacks",
 			source: "http://fr.farnell.com/cliff-electronic-components/fc681374v/connecteur-audio-jack-3-5mm-3pos/dp/2431939",
+			size: 	{width: 8, height: 10.5}, //mm
 			prices: {
 				"1":    0.998,
 				"50":   0.58,
@@ -102,6 +103,7 @@ var prices = {
 		{
 			name:   "Jacks",
 			source: "http://fr.farnell.com/multicomp/mj-074n/embase-jack-3-5mm-3p/dp/1267374",
+			size: 	{width: 8, height: 10.5}, //mm
 			prices: {
 				"1":   1.15,
 				"25":  0.954,
@@ -117,6 +119,7 @@ var prices = {
 			name:      "Potentiometer",
 			source:    "http://fr.farnell.com/bi-technologies-tt-electronics/p160knp-0qc20b10k/potentiometre-rotatif-10k-20mm/dp/1760793",
 			sourceAlt: "http://fr.farnell.com/bi-technologies-tt-electronics/p160knp-0ec15b10k/potentiometre-rotatif-10k-15mm/dp/1684813",
+			size: 		{width: 17, height: 20}, //mm
 			prices: {
 				"1":    0.954,
 				"10":   0.673,
@@ -139,6 +142,64 @@ var prices = {
 				"1500": 0.217
 			}
 		}
+	],
+	leds: [
+		{
+			name:   "LEDs",
+			source: "http://fr.farnell.com/kingbright/l-1503gc/led-5mm-vert-100mcd-568nm/dp/2335730?MER=bn_level5_5NP_EngagementRecSingleItem_4",
+			size: 	{width: 5, height: 5}, //mm
+			prices: {
+				"5":    0.0739,
+				"25":   0.0709,
+				"100":  0.0679,
+				"250":  0.0649,
+				"500":  0.062,
+				"1000": 0.0589
+			}
+		},
+		{
+			name:   "470Ω Resistor",
+			source: "http://fr.farnell.com/multicomp/mcre000033/resistance-couche-carbon-125mw/dp/1700232?st=470%20ohm%20resistance",
+			prices: {
+				"5":     0.0198,
+				"50":    0.0171,
+				"250":   0.0143,
+				"500":   0.0129,
+				"1000":  0.0115,
+				"2000":  0.0091,
+				"10000": 0.0058
+			}
+		}		
+	],
+	switchesT: [
+		{
+			name:   "Toggle switches",
+			source: "http://fr.farnell.com/multicomp/1ms1t1b5m1qe/interrupteur-spdt/dp/9473378",
+			size: 	{width: 6.86, height: 12.7}, //m
+			prices: {
+				"5":   1.92,
+				"25":  1.52,
+				"75":  1.07,
+				"150": 0.962,
+				"250": 0.874,
+				"500": 0.721
+			}
+		}		
+	],
+	switchesM: [
+		{
+			name:   "Momentary switches",
+			source: "http://fr.farnell.com/multicomp/r13-24a-05-bb/switch-spst-3a-125v-solder/dp/1634687",
+			size: 	{width: 7.2, height: 7.2}, //mm
+			prices: {
+				"5":    1.30,
+				"25":   1.05,
+				"100":  0.747,
+				"150":  0.667,
+				"250":  0.595,
+				"1000": 0.501
+			}
+		}		
 	],
 	boards: [
 		{
@@ -175,70 +236,32 @@ var prices = {
 			}
 		}
 	],
-	leds: [
-		{
-			name:   "LEDs",
-			source: "http://fr.farnell.com/kingbright/l-1503gc/led-5mm-vert-100mcd-568nm/dp/2335730?MER=bn_level5_5NP_EngagementRecSingleItem_4",
-			prices: {
-				"5":    0.0739,
-				"25":   0.0709,
-				"100":  0.0679,
-				"250":  0.0649,
-				"500":  0.062,
-				"1000": 0.0589
-			}
-		},
-		{
-			name:   "470Ω Resistor",
-			source: "http://fr.farnell.com/multicomp/mcre000033/resistance-couche-carbon-125mw/dp/1700232?st=470%20ohm%20resistance",
-			prices: {
-				"5":     0.0198,
-				"50":    0.0171,
-				"250":   0.0143,
-				"500":   0.0129,
-				"1000":  0.0115,
-				"2000":  0.0091,
-				"10000": 0.0058
-			}
-		}		
-	],
-	switchesT: [
-		{
-			name:      "Toggle switches",
-			source:    "http://fr.farnell.com/multicomp/1md1t1b5m1qe/interrupteur-dpdt/dp/9473394",
-			prices: {
-				"1":   1.70,
-				"15":  1.63,
-				"25":  1.40,
-				"100": 1.22,
-				"150": 1.15,
-				"250": 0.977
-			}
-		}		
-	],
-	switchesM: [
-		{
-			name:      "Momentary switches",
-			source:    "http://fr.farnell.com/multicomp/r13-24a-05-bb/switch-spst-3a-125v-solder/dp/1634687",
-			prices: {
-				"5":    1.30,
-				"25":   1.05,
-				"100":  0.747,
-				"150":  0.667,
-				"250":  0.595,
-				"1000": 0.501
-			}
-		}		
-	],
 	audioInterface: [
 		{
 			name:   "Audio interfaces",
+			optional: true,
 			source: "https://www.amazon.fr/Firepower-BEHRINGER-FCA1616-Interface-compatible/dp/B00E87OK1G/ref=pd_cp_267_1?_encoding=UTF8&pd_rd_i=B00E87OK1G&pd_rd_r=ade416d4-9b2d-11e8-9d26-3fe4c7b0301a&pd_rd_w=amqPT&pd_rd_wg=WcnoM&pf_rd_i=desktop-dp-sims&pf_rd_m=A1X6FK5RDHNB96&pf_rd_p=2171515611131751452&pf_rd_r=F9YH3QZE272RV2A33TGM&pf_rd_s=desktop-dp-sims&pf_rd_t=40701&psc=1&refRID=F9YH3QZE272RV2A33TGM",
 			prices: {
 				"1": 225,
 			}
 		}		
+	],
+	usb: [
+		{
+			name:   "USB Pass Through",
+			optional: true,
+			source: "http://fr.farnell.com/cliff-electronic-components/cp30207nm/adaptateur-usb-2-0-type-b-type/dp/2518195?ost=CP30207NM&ddkey=http%3Afr-FR%2FElement14_France%2Fsearch",
+			prices: {
+				"1":   7.82,
+				"5":   5.69,
+				"10":  5.31,
+				"25":  4.94,
+				"50":  4.69,
+				"100": 4.60
+			}
+		}		
 	]
+	
 }
 //133.4mm = 380px (VCV)
 function updateCache(step) {
@@ -396,6 +419,7 @@ function updateCache(step) {
 					switchesM:      {value: cache.jals.switchesM},
 					audioJacks:     {value: cache.jals.audioJacks},
 					audioInterface: {value: ceil(cache.jals.audioJacks / 16)}, //<— based on a 16-channel audio interface
+					usb: 			{value: 1},
 					wiresMM:        {value: cache.jals.wiresMM},
 					wiresFF:        {value: cache.jals.wiresFF},
 					boards:         {value: 0},
@@ -440,10 +464,11 @@ function updateCache(step) {
 							});
 							if(currentPriceMin != "") {
 								part.price.push({
-									name:   prices[type][i].name,
-									source: prices[type][i].source,
-									unit:   prices[type][i].prices[currentPriceMin],
-									total:  0
+									name:     prices[type][i].name,
+									source:   prices[type][i].source,
+									optional: prices[type][i].optional,
+									unit:     prices[type][i].prices[currentPriceMin],
+									total:    0
 								});
 							}
 						}
@@ -479,10 +504,10 @@ function updateCache(step) {
 						for(var i = 0 ; i < part.price.length ; i++) {
 							var price = part.price[i].unit * part.remaining;
 							part.price[i].total += price;
-							if(type != "audioInterface")
-								totalPrice.shared   += price;
-							else
+							if(part.price[i].optional)
 								totalPrice.optional += price;
+							else
+								totalPrice.shared   += price;
 						}
 						cache.partList[type].remaining -= part.remaining;
 					}
@@ -495,7 +520,7 @@ function updateCache(step) {
 				
 				//Price display by parts
 				$.each(cache.partList, function(type, part) {
-					var html = "× " + part.value;
+					var html = "×" + part.value;
 					for(var i = 0 ; i < prices[type].length ; i++) {
 						if(i > 0)
 							html += "&nbsp;+";
@@ -524,7 +549,15 @@ function updateCache(step) {
 				$("#canvas").removeClass("image");
 		
 			//Module
-			var rack = {pos: {x: 9999999, y: 9999999}, paper: {current: {x: 0, y: 0}, size: {width: (210 - 0)*380/133, height: (297 - 0)*380/133}}, size: {width: 0, height: 0}, scale: 1};
+			var rack = {
+				pos: {x: 9999999, y: 9999999},
+				paper: {
+					current: {x: 0, y: 0},
+					size: {width: mm2px(210 - 0), height: mm2px(297 - 0)} //A4 sheet of paper
+				},
+				size: {width: 0, height: 0},
+				scale: 1
+			};
 			//133mm = 380px (VCV)
 			cache.items = [];		
 			$.each(cache.modules, function(index, module) {
@@ -563,10 +596,10 @@ function updateCache(step) {
 
 				//Text on buttons
 				module.container.drawingText  = new PIXI.Text(module.nameInRack, {fontFamily : "revilo san", fontSize: 10, fill : app.baseColors[module.wiring.board%3].stroke});
-				module.container.drawingText2 = new PIXI.Text(round(module.size.mm.width, 2) + " × " + round(module.size.mm.height, 2) + " mm\n" + ((module.price.total)?(ceil(module.price.total) + " €"):("")), {fontFamily : "revilo san", fontSize: 9, fill : app.baseColors[module.wiring.board%3].stroke});
+				module.container.drawingText2 = new PIXI.Text(round(module.size.eurorack.width,1) + "HP / " + round(module.size.eurorack.height,1) + "U" + ((module.price.total)?(" — " + round(module.price.total) + "€"):("")) + "\n" + round(module.size.mm.width,1) + " × " + round(module.size.mm.height,1) + " mm", {fontFamily : "revilo san", fontSize: 9, fill : app.baseColors[module.wiring.board%3].stroke});
 				module.container.drawingText .position.y = 3 + module.container.height / module.container.scale.y;
-				module.container.drawingText2.position.y = 3 + module.container.drawingText.position.y + module.container.drawingText.height;
-				module.container.drawingText2.alpha = module.container.drawingText2.alphaBefore = 0.5;
+				module.container.drawingText2.position.y = module.container.drawingText.position.y + module.container.drawingText.height;
+				module.container.drawingText2.alpha = module.container.drawingText2.alphaBefore = 0.75;
 				module.container.addChild(module.container.drawingText);
 				module.container.addChild(module.container.drawingText2);
 				cache.items.push(module.container.drawing);
@@ -583,11 +616,6 @@ function updateCache(step) {
 					drawItem(module, item);
 				});
 		
-				//LEDs
-				$.each(module.lights, function(index, item) {
-					drawItem(module, item);
-				});
-		
 				//Potentiometers
 				$.each(module.potentiometers, function(index, item) {
 					drawItem(module, item);
@@ -598,6 +626,11 @@ function updateCache(step) {
 					drawItem(module, item);
 				});
 		
+				//LEDs
+				$.each(module.lights, function(index, item) {
+					drawItem(module, item);
+				});
+
 				//Special case : audio jacks
 				if(module.audio) {
 					$.each(module.audio.inputs, function(index, item) {
@@ -648,50 +681,15 @@ function drawItem(module, item) {
 		if(palette == undefined)
 			palette = app.baseColors[item.wiring.board];
 	
-		//Visual icon + color + offsets
-		var color = palette.stroke, textColor = palette.background, textOffset = {x: 0, y: 0}, textSize = 9;
-		if     (item.type == "potentiometer") {
-			textColor = palette.stroke;
-			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_knob.texture);
-			item.container.drawing.width = item.container.drawing.height = 40;
-			textOffset.y = -item.container.drawing.height * 0.62;
-		}
-		else if (item.type == "switch") {
-			textColor = palette.stroke;
-			if(item.isToggle) {
-				item.container.drawing = PIXI.Sprite.from(cache.resources.icn_switchT.texture);
-				item.container.drawing.width = item.container.drawing.height = 25;
-				textOffset.y = -item.container.drawing.height * 0.35;
-			}
-			else {
-				item.container.drawing = PIXI.Sprite.from(cache.resources.icn_switchM.texture);
-				item.container.drawing.width = item.container.drawing.height = 25;
-				textOffset.y = -item.container.drawing.height * 0.70;
-			}
-		}
-		else if((item.type == "jack_input") || (item.type == "jack_output") || (item.type == "jack_audio_input") || (item.type == "jack_audio_output")) {
-			if(item.type == "jack_input")
-				item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_input.texture);
-			else if(item.type == "jack_audio_input")
-	 			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_audio_input.texture);
-	 		else if(item.type == "jack_audio_output") {
-	 			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_audio_output.texture);
-	 			textColor = palette.stroke;
-			}
-			else {
-				item.container.drawing = PIXI.Sprite.from(cache.resources.icn_jack_output.texture);
-				textColor = palette.stroke;
-			}
-			item.container.drawing.width = item.container.drawing.height = 30;
-			textOffset.y += -item.container.drawing.height * 0.675;
-		}
-		else if(item.type == "led") {
-			item.container.drawing = PIXI.Sprite.from(cache.resources.icn_led.texture);
-			textSize = 8;
-			item.container.drawing.width = item.container.drawing.height = 12;
-			textOffset = {x: 0, y: -item.container.drawing.height * 0.9};
-		}
+		//Items to draw
+		var itemTypeSimplified = item.type.split("_")[0];
+		item.container.drawing = PIXI.Sprite.from(cache.resources[item.type].texture);
+		item.container.drawing.width = item.container.drawing.height = (mm2px(prices[itemTypeSimplified][0].size.width) + mm2px(prices[itemTypeSimplified][0].size.height))/2;
 	
+		//Visual icon + color + offsets
+		var color = palette.stroke;
+		var textColor = ((item.type == "potentiometers") || (item.type == "switchesT") || (item.type == "switchesM") || (item.type.indexOf("output") >= 0))?(palette.stroke):(palette.background);
+		var textOffset = {x: 0, y: (item.isToggle)?(10):(0)}, textSize = 9;
 	
 		//Draw stuff
 		item.container.drawing.tint = color;
@@ -699,6 +697,13 @@ function drawItem(module, item) {
 		item.container.drawing.position.y = -item.container.drawing.height/2;
 		item.container.addChild(item.container.drawing);
 		item.container.drawing.item = item;
+		
+		//Occupation
+		item.container.space = new PIXI.Graphics();
+		item.container.space.alpha = 0.5;
+		item.container.space.lineStyle(1, color);
+		item.container.space.drawRect(-mm2px(prices[itemTypeSimplified][0].size.width)/2, -mm2px(prices[itemTypeSimplified][0].size.height)/2, mm2px(prices[itemTypeSimplified][0].size.width), mm2px(prices[itemTypeSimplified][0].size.height)+1);
+		item.container.addChild(item.container.space);
 	
 		//IDs
 		var mainID, secondId
@@ -714,15 +719,15 @@ function drawItem(module, item) {
 		//Add main ID
 		item.container.drawingText = new PIXI.Text(mainID, {fontFamily : "OpenSans", fontWeight: 500, fill : textColor, fontSize: textSize});
 		item.container.drawingText.position.x = -item.container.drawingText.width/2 + textOffset.x;
-		item.container.drawingText.position.y =  item.container.drawing.height/2 + textOffset.y;
+		item.container.drawingText.position.y = textOffset.y - item.container.drawingText.height/2 + 1;
 		item.container.addChild(item.container.drawingText);
 
 		//Add wiring ID
-		item.container.drawingText2 = new PIXI.Text(secondId, {fontFamily : module.container.drawingText.style.fontFamily, fontWeight: 200, fontSize: max(7, textSize-3), fill : palette.stroke});
-		item.container.drawingText2.position.x = -item.container.drawingText2.width/2;
-		item.container.drawingText2.position.y =  item.container.drawing.height/2 + 1;
-		item.container.drawingText2.alpha = 0.75;
-		item.container.addChild(item.container.drawingText2);
+		//item.container.drawingText2 = new PIXI.Text(secondId, {fontFamily : module.container.drawingText.style.fontFamily, fontWeight: 200, fontSize: max(7, textSize-3), fill : palette.stroke});
+		//item.container.drawingText2.position.x = -item.container.drawingText2.width/2;
+		//item.container.drawingText2.position.y =  item.container.drawing.height/2 + 1;
+		//item.container.drawingText2.alpha = 0.75;
+		//item.container.addChild(item.container.drawingText2);
 	
 		//Events
 		cache.items.push(item.container);
@@ -751,6 +756,7 @@ function drawItem(module, item) {
 
 //Websockets reception
 function websocketReception(message) {
+	//console.log(message);
 	if(message.length) {
 		//Pulse activity of VCV-Rack
 		if(message[0] == "/pulse") {
@@ -792,14 +798,11 @@ function websocketReception(message) {
 				};
 				
 				//Eurorack size
-				module.size.mm = { // 1U = 44.45mm = 380px
-					width: 		(module.size.px.width  / 380 * 3) * 44.45,
-					height: 	(module.size.px.height / 380 * 3) * 44.45
+				module.size.mm = { 
+					width: 		px2mm(module.size.px.width),
+					height: 	px2mm(module.size.px.height)
 				};
-				module.size.eurorack = {
-					width: 		module.size.mm.width  / 5, //5.08
-					height: 	module.size.mm.height / 44.45,
-				};
+				module.size.eurorack = mm2rack(module.size.mm);
 
 				//Add in container
 				cacheTmp.modules.push(module);
@@ -812,22 +815,21 @@ function websocketReception(message) {
 			else {
 				//OSC deserialization
 				var jack = {
-					type: 		     "jack",
+					type: 		     "jacks",
 					id:   	  		 parseInt(message[1], 10),
 					moduleId: 		 parseInt(message[2], 10),
 					inputOrOutputId: parseInt(message[3], 10),
 					pos:  	  		{x: parseFloat(message[4]), y: parseFloat(message[5])},
 					active:   		(parseInt(message[6], 10) > 0.5),
-					/*value: 	     parseFloat(message[7]),*/
-					isInput:  		(parseInt(message[8], 10) > 0.5)
+					isInput:  		(parseInt(message[7], 10) > 0.5)
 				};
 
 				//Module reference
 				var module = cacheTmp.modules[jack.moduleId];
 				if(module) {
 					//Jack type (input or output)
-					if(jack.isInput)	{ module.inputs [jack.inputOrOutputId] = jack; jack.type = "jack_input";  }
-					else				{ module.outputs[jack.inputOrOutputId] = jack; jack.type = "jack_output"; }
+					if(jack.isInput)	{ module.inputs [jack.inputOrOutputId] = jack; jack.type = "jacks_input";  }
+					else				{ module.outputs[jack.inputOrOutputId] = jack; jack.type = "jacks_output"; }
 				
 					//Wiring
 					jack.wiring = {board: floor(jack.id/cache.arduino.jacks.length), pin: cache.arduino.jacks[jack.id % cache.arduino.jacks.length]};
@@ -845,12 +847,12 @@ function websocketReception(message) {
 						if(jack.isInput) {
 							jack.pos.x -= 30;
 							module.audio.inputs[jack.inputOrOutputId] = jack;
-							jack.type = "jack_audio_input";
+							jack.type = "jacks_audio_input";
 						}
 						else {
 							jack.pos.x += 30;
 							module.audio.outputs[jack.inputOrOutputId] = jack;
-							jack.type = "jack_audio_output";
+							jack.type = "jacks_audio_output";
 						}
 						delete jack.wiring;
 						jack.id = jack.inputOrOutputId+1;
@@ -866,12 +868,11 @@ function websocketReception(message) {
 			else {
 				//OSC deserialization
 				var potentiometer = {
-					type: 	          "potentiometer",
+					type: 	          "potentiometers",
 					id:   	          parseInt(message[1], 10),
 					moduleId:         parseInt(message[2], 10),
 					potentiometerId:  parseInt(message[3], 10),
-					pos:  	          {x: parseFloat(message[4]), y: parseFloat(message[5])},
-					/*value: 	      {absolute: parseFloat(message[6]), normalized: parseFloat(message[7])}*/
+					pos:  	          {x: parseFloat(message[4]), y: parseFloat(message[5])}
 				};
 
 				//Module reference
@@ -897,15 +898,16 @@ function websocketReception(message) {
 			else {
 				//OSC deserialization
 				var button = {
-					type: 	  "switch",
+					type: 	  "switchesM",
 					id:   	  parseInt(message[1], 10),
 					moduleId: parseInt(message[2], 10),
 					switchId: parseInt(message[3], 10),
 					pos:  	  {x: parseFloat(message[4]), y: parseFloat(message[5])},
-					/*value: 	  {absolute: parseFloat(message[6]), normalized: parseFloat(message[7])}*/
-					isToggle: parseInt(message[8], 10),
-					hasLED:   parseInt(message[9], 10)
+					isToggle: parseInt(message[6], 10),
+					hasLED:   parseInt(message[7], 10)
 				};
+				if(button.isToggle)
+					button.type = "switchesT";
 
 				//Module reference
 				var module = cacheTmp.modules[button.moduleId];
@@ -930,12 +932,11 @@ function websocketReception(message) {
 			else {
 				//OSC deserialization
 				var led = {
-					type: 	  "led",
+					type: 	  "leds",
 					id:   	  parseInt(message[1], 10),
 					moduleId: parseInt(message[2], 10),
 					lightId:  parseInt(message[3], 10),
 					pos:  	  {x: parseFloat(message[4]), y: parseFloat(message[5])},
-					/*value: 	  {absolute: parseFloat(message[6]), normalized: parseFloat(message[7])}*/
 				};
 
 				//Module reference
@@ -957,8 +958,18 @@ function websocketReception(message) {
 	}
 }
 
-
-
+function px2mm(px) { // 3U = 3 × 44.45mm = 133.35mm = 380px in VCV // But 133.35 is theorical, 128.5 is applyed
+	return px / 380 * 128.5;
+}
+function mm2px(mm) {
+	return mm * 380 / 128.5;
+}
+function mm2rack(size) {
+	return {
+		width: 	size.width  / 5.08,  //HP
+		height: size.height / (128.5/3), //U
+	};
+}
 
 //Websocket status
 function websocketOpened() {

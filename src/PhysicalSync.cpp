@@ -300,10 +300,8 @@ void PhysicalSync::startOSCServer() {
 }
 
 //Log in console + through OSC
-void PhysicalSync::logToOsc(std::string message) {
-    if(osc)
-        osc->send("/log", message);
-    info("%s", message.c_str());
+void PhysicalSync::logV(std::string message) {
+    warn("%s", message.c_str());
 }
 
 
@@ -719,7 +717,7 @@ void PhysicalSync::setPotentiometer(unsigned int moduleId, unsigned int potentio
         stream << " potentiometer ";
         stream << potentiometerId;
         stream << " not found.";
-        logToOsc(stream.str());
+        logV(stream.str());
     }
 }
 void PhysicalSync::setSwitch(unsigned int moduleId, unsigned int switchId, float switchValue) {
@@ -733,7 +731,7 @@ void PhysicalSync::setSwitch(unsigned int moduleId, unsigned int switchId, float
         stream << " switch ";
         stream << switchId;
         stream << " not found.";
-        logToOsc(stream.str());
+        logV(stream.str());
     }
 }
 void PhysicalSync::resetPotentiometer(unsigned int moduleId, unsigned int potentiometerId) {
@@ -747,7 +745,7 @@ void PhysicalSync::resetPotentiometer(unsigned int moduleId, unsigned int potent
         stream << "potentiometer ";
         stream << potentiometerId;
         stream << " not found.";
-        logToOsc(stream.str());
+        logV(stream.str());
     }
 }
 void PhysicalSync::setConnection(unsigned int outputModuleId, unsigned int outputPortId, unsigned int inputModuleId, unsigned int inputPortId, bool active) {
@@ -773,7 +771,7 @@ void PhysicalSync::setConnection(unsigned int outputModuleId, unsigned int outpu
             //Test if input is inactive
             if(!input.input.active) {
                 //Créé le lien
-                logToOsc(logTextBase + "creation");
+                logV(logTextBase + "creation");
                 WireWidget *wireWidget = new WireWidget();
                 wireWidget->inputPort  = input.port;
                 wireWidget->outputPort = output.port;
@@ -782,19 +780,19 @@ void PhysicalSync::setConnection(unsigned int outputModuleId, unsigned int outpu
                 updateCache(true);
             }
             else
-                logToOsc(logTextBase + "input is already busy");
+                logV(logTextBase + "input is already busy");
         }
         else
-            logToOsc(logTextBase + "input or output not found");
+            logV(logTextBase + "input or output not found");
     }
     else if((wire.widget) && (!active)) {
-        logToOsc(logTextBase + "removed");
+        logV(logTextBase + "removed");
         wire.widget->inputPort = wire.widget->outputPort = NULL;
         wire.widget->updateWire();
         updateCache(true);
     }
     else
-        logToOsc(logTextBase + "no action done");
+        logV(logTextBase + "no action done");
 }
 void PhysicalSync::clearConnection() {
     for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
@@ -812,8 +810,16 @@ void PhysicalSync::dumpLEDs(const char *address, bool inLine) {
     lights[OSC_LED_EXT].value = 1-lights[OSC_LED_EXT].value;
     if(osc) {
         std::string inLineString;
-        if(!inLine)
-            osc->send(address, "start");
+
+        //Prepare bundle
+        UdpTransmitSocket transmitSocket(IpEndpointName(osc->rtBrokerIp, osc->rtBrokerPort));
+        osc::OutboundPacketStream bundle(osc->buffer, OSC_BUFFER_SIZE);
+        if(!inLine) {
+            bundle << osc::BeginBundle();
+            bundle << osc::BeginMessage(address) << "start" << osc::EndMessage;
+        }
+
+        //Browse each module
         for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
             Modul module = getModule(moduleId);
             if(module.widget) {
@@ -823,70 +829,153 @@ void PhysicalSync::dumpLEDs(const char *address, bool inLine) {
                         if(inLine)
                             inLineString += " " + std::to_string((int)(255 * led.light.value));
                         else
-                            osc->send(address, mapToLED(moduleId, ledId), moduleId, ledId, led.widget->box.getCenter(), led.light.getBrightness(), led.light.value);
+                            bundle << osc::BeginMessage(address)
+                                   << mapToLED(moduleId, ledId)
+                                   << (int)moduleId << (int)ledId
+                                   << (int)led.widget->box.getCenter().x << (int)led.widget->box.getCenter().y
+                                   << osc::EndMessage;
                     }
                 }
             }
         }
-        if(!inLine)
-            osc->send(address, "end");
+        if(!inLine) {
+            //Send bundle
+            bundle << osc::BeginMessage(address) << "end" << osc::EndMessage;
+            bundle << osc::EndBundle;
+            transmitSocket.Send(bundle.Data(), bundle.Size());
+        }
         else {
             inLineString = "L" + inLineString;
-            osc->send(address, inLineString);
+
+            //Send message
+            bundle << osc::BeginMessage(address) << inLineString.c_str() << osc::EndMessage;
+            transmitSocket.Send(bundle.Data(), bundle.Size());
         }
     }
 }
 void PhysicalSync::dumpPotentiometers(const char *address) {
     if(osc) {
-        osc->send(address, "start");
+        //Prepare bundle
+        UdpTransmitSocket transmitSocket(IpEndpointName(osc->rtBrokerIp, osc->rtBrokerPort));
+        osc::OutboundPacketStream bundle(osc->buffer, OSC_BUFFER_SIZE);
+        bundle << osc::BeginBundle();
+        bundle << osc::BeginMessage(address) << "start" << osc::EndMessage;
+
+        //Browse each module
         for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
             Modul module = getModule(moduleId);
             if(module.widget) {
                 for(unsigned int potentiometerId = 0 ; potentiometerId < module.potentiometers.size() ; potentiometerId++) {
                     Potentiometer potentiometer = getPotentiometer(moduleId, potentiometerId);
                     if(potentiometer.widget)
-                        osc->send(address, mapToPotentiometer(moduleId, potentiometerId), moduleId, potentiometerId, potentiometer.widget->box.getCenter(), potentiometer.widget->value, (potentiometer.widget->value - potentiometer.widget->minValue) / (potentiometer.widget->maxValue - potentiometer.widget->minValue));
+                        bundle << osc::BeginMessage(address)
+                               << mapToPotentiometer(moduleId, potentiometerId)
+                               << (int)moduleId << (int)potentiometerId
+                               << (int)potentiometer.widget->box.getCenter().x << (int)potentiometer.widget->box.getCenter().y
+                               << osc::EndMessage;
                 }
             }
         }
-        osc->send(address, "end");
+
+        //Send bundle
+        bundle << osc::BeginMessage(address) << "end" << osc::EndMessage;
+        bundle << osc::EndBundle;
+        transmitSocket.Send(bundle.Data(), bundle.Size());
     }
 }
 void PhysicalSync::dumpSwitches(const char *address) {
     if(osc) {
-        osc->send(address, "start");
+        //Prepare bundle
+        UdpTransmitSocket transmitSocket(IpEndpointName(osc->rtBrokerIp, osc->rtBrokerPort));
+        osc::OutboundPacketStream bundle(osc->buffer, OSC_BUFFER_SIZE);
+        bundle << osc::BeginBundle();
+        bundle << osc::BeginMessage(address) << "start" << osc::EndMessage;
+
+        //Browse each module
         for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
             Modul module = getModule(moduleId);
             if(module.widget) {
                 for(unsigned int switchId = 0 ; switchId < module.switches.size() ; switchId++) {
                     Switch button = getSwitch(moduleId, switchId);
                     if(button.widget)
-                        osc->send(address, mapToSwitch(moduleId, switchId), moduleId, switchId, button.widget->box.getCenter(), button.widget->value, (button.widget->value - button.widget->minValue) / (button.widget->maxValue - button.widget->minValue), button.isToggle, button.hasLED);
+                        bundle << osc::BeginMessage(address)
+                               << mapToSwitch(moduleId, switchId)
+                               << (int)moduleId << (int)switchId
+                               << (int)button.widget->box.getCenter().x << (int)button.widget->box.getCenter().y
+                               << (int)button.isToggle << (int)button.hasLED
+                               << osc::EndMessage;
                 }
             }
         }
-        osc->send(address, "end");
+
+        //Send bundle
+        bundle << osc::BeginMessage(address) << "end" << osc::EndMessage;
+        bundle << osc::EndBundle;
+        info("%d", bundle.Size());
+        transmitSocket.Send(bundle.Data(), bundle.Size());
     }
 }
 void PhysicalSync::dumpJacks(const char *address) {
     if(osc) {
-        osc->send(address, "start");
-        for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
-            Modul module = getModule(moduleId);
-            if(module.widget) {
-                for(unsigned int inputId = 0 ; inputId < module.inputs.size() ; inputId++) {
-                    JackInput input = getInputPort(moduleId, inputId);
-                    if(input.port)
-                        osc->send(address, mapToJack(moduleId, inputId, true), moduleId, inputId, input.port->box.getCenter(), input.input.active, input.input.value, 1);
-                }
-                for(unsigned int ouputId = 0 ; ouputId < module.outputs.size() ; ouputId++) {
-                    JackOutput output = getOutputPort(moduleId, ouputId);
-                    if(output.port)
-                        osc->send(address, mapToJack(moduleId, ouputId, false), moduleId, ouputId, output.port->box.getCenter(), output.output.active, output.output.value, 0);
+        //Inputs
+        if(true) {
+            //Prepare bundle
+            UdpTransmitSocket transmitSocket(IpEndpointName(osc->rtBrokerIp, osc->rtBrokerPort));
+            osc::OutboundPacketStream bundle(osc->buffer, OSC_BUFFER_SIZE);
+            bundle << osc::BeginBundle();
+            bundle << osc::BeginMessage(address) << "start" << osc::EndMessage;
+
+            //Browse each module
+            for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+                Modul module = getModule(moduleId);
+                if(module.widget) {
+                    for(unsigned int inputId = 0 ; inputId < module.inputs.size() ; inputId++) {
+                        JackInput input = getInputPort(moduleId, inputId);
+                        if(input.port)
+                            bundle << osc::BeginMessage(address)
+                                   << mapToJack(moduleId, inputId, true)
+                                   << (int)moduleId << (int)inputId
+                                   << (int)input.port->box.getCenter().x << (int)input.port->box.getCenter().y
+                                   << (int)input.input.active << 1
+                                   << osc::EndMessage;
+                    }
                 }
             }
+
+            //Send bundle
+            bundle << osc::EndBundle;
+            transmitSocket.Send(bundle.Data(), bundle.Size());
         }
-        osc->send(address, "end");
+
+        //Outputs
+        if(true) {
+            //Prepare bundle
+            UdpTransmitSocket transmitSocket(IpEndpointName(osc->rtBrokerIp, osc->rtBrokerPort));
+            osc::OutboundPacketStream bundle(osc->buffer, OSC_BUFFER_SIZE);
+            bundle << osc::BeginBundle();
+
+            //Browse each module
+            for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
+                Modul module = getModule(moduleId);
+                if(module.widget) {
+                    for(unsigned int ouputId = 0 ; ouputId < module.outputs.size() ; ouputId++) {
+                        JackOutput output = getOutputPort(moduleId, ouputId);
+                        if(output.port)
+                            bundle << osc::BeginMessage(address)
+                                   << mapToJack(moduleId, ouputId, false)
+                                   << (int)moduleId << (int)ouputId
+                                   << (int)output.port->box.getCenter().x << (int)output.port->box.getCenter().y
+                                   << (int)output.output.active << 0
+                                   << osc::EndMessage;
+                    }
+                }
+            }
+
+            //Send bundle
+            bundle << osc::BeginMessage(address) << "end" << osc::EndMessage;
+            bundle << osc::EndBundle;
+            transmitSocket.Send(bundle.Data(), bundle.Size());
+        }
     }
 }
 void PhysicalSync::dumpModules(const char *address) {
@@ -894,19 +983,32 @@ void PhysicalSync::dumpModules(const char *address) {
         //Ask for cache update for the first refresh
         updateCache();
 
-        //Go
-        osc->send(address, "start");
+        //Prepare bundle
+        UdpTransmitSocket transmitSocket(IpEndpointName(osc->rtBrokerIp, osc->rtBrokerPort));
+        osc::OutboundPacketStream bundle(osc->buffer, OSC_BUFFER_SIZE);
+        bundle << osc::BeginBundle();
+        bundle << osc::BeginMessage(address) << "start" << osc::EndMessage;
+
         for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
             Modul module = getModule(moduleId);
             if(module.widget)
-                osc->send(address, moduleId, module.widget->model->slug, module.widget->model->name, module.widget->model->author, module.name, module.widget->box.pos, module.widget->box.size, module.inputs.size(), module.outputs.size(), module.potentiometers.size(), module.switches.size(), module.leds.size());
+                bundle << osc::BeginMessage(address)
+                       << (int)moduleId << module.widget->model->slug.c_str() << module.widget->model->name.c_str() << module.widget->model->author.c_str() << module.name.c_str()
+                       << (int)module.widget->box.pos.x  << (int)module.widget->box.pos.y
+                       << (int)module.widget->box.size.x << (int)module.widget->box.size.y
+                       << (int)module.inputs.size() << (int)module.outputs.size() << (int)module.potentiometers.size() << (int)module.switches.size() << (int)module.leds.size()
+                       << osc::EndMessage;
         }
-        osc->send(address, "end");
+
+        //Send bundle
+        bundle << osc::BeginMessage(address) << "end" << osc::EndMessage;
+        bundle << osc::EndBundle;
+        transmitSocket.Send(bundle.Data(), bundle.Size());
     }
 }
-void PhysicalSync::send(const char *message) {
+void PhysicalSync::send(const char *address) {
     if(osc)
-        osc->send(message);
+        osc->send(address);
 }
 void PhysicalSync::pongReceived() {
     isRTBrokerTalking = true;
@@ -996,19 +1098,19 @@ void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
         //Settings page
         RTBrokerMenu *rtbroker_openSettings = MenuItem::create<RTBrokerMenu>("Serial port settings");
         rtbroker_openSettings->physicalSync = physicalSync;
-        rtbroker_openSettings->oscMessage = "/rtbroker/opensettings";
+        rtbroker_openSettings->oscAddress = "/rtbroker/opensettings";
         menu->addChild(rtbroker_openSettings);
 
         //Network page
         RTBrokerMenu *rtbroker_openNetwork = MenuItem::create<RTBrokerMenu>("Network system settings");
         rtbroker_openNetwork->physicalSync = physicalSync;
-        rtbroker_openNetwork->oscMessage = "/rtbroker/opennetwork";
+        rtbroker_openNetwork->oscAddress = "/rtbroker/opennetwork";
         menu->addChild(rtbroker_openNetwork);
 
         //Webpage page
         RTBrokerMenu *rtbroker_openWebpage = MenuItem::create<RTBrokerMenu>("Open webpage");
         rtbroker_openWebpage->physicalSync = physicalSync;
-        rtbroker_openWebpage->oscMessage = "/rtbroker/openwebpage";
+        rtbroker_openWebpage->oscAddress = "/rtbroker/openwebpage";
         menu->addChild(rtbroker_openWebpage);
     }
 
@@ -1049,7 +1151,7 @@ void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
 //Menu item
 void RTBrokerMenu::onAction(EventAction &) {
     if(physicalSync)
-        physicalSync->send(oscMessage);
+        physicalSync->send(oscAddress);
 }
 void AudioPresetMenu::onAction(EventAction &) {
     if(physicalSync)

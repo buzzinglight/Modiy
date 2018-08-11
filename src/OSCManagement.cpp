@@ -128,32 +128,6 @@ float OSCManagement::asNumber(const osc::ReceivedMessage::const_iterator &arg) c
 }
 
 //OSC send
-void OSCManagement::send(const char *address, const std::string &message) {
-    UdpTransmitSocket transmitSocket(IpEndpointName(rtBrokerIp, rtBrokerPort));
-    osc::OutboundPacketStream packet(buffer, 1024);
-
-    packet << osc::BeginMessage(address) << message.c_str() << osc::EndMessage;
-    transmitSocket.Send(packet.Data(), packet.Size());
-}
-void OSCManagement::send(const char *address, int valueIndex, unsigned int moduleId, unsigned int valueId, const Vec &position, float valueAbsolute, float valueNormalized, int extraInfo1, int extraInfo2) {
-    UdpTransmitSocket transmitSocket(IpEndpointName(rtBrokerIp, rtBrokerPort));
-    osc::OutboundPacketStream packet(buffer, 1024);
-
-    packet << osc::BeginMessage(address) << valueIndex << (int)moduleId << (int)valueId << position.x << position.y << valueAbsolute << valueNormalized;
-    if(extraInfo1 != -9999)
-        packet << extraInfo1;
-    if(extraInfo2 != -9999)
-        packet << extraInfo2;
-    packet << osc::EndMessage;
-    transmitSocket.Send(packet.Data(), packet.Size());
-}
-void OSCManagement::send(const char *address, unsigned int moduleId, const std::string &slug, const std::string &name, const std::string &author, const std::string &nameInRack, const Vec &position, const Vec &size, unsigned int nbInputs, unsigned int nbOutputs, unsigned int nbPotentiometers, unsigned int nbSwitches, unsigned int nbLEDs) {
-    UdpTransmitSocket transmitSocket(IpEndpointName(rtBrokerIp, rtBrokerPort));
-    osc::OutboundPacketStream packet(buffer, 1024);
-
-    packet << osc::BeginMessage(address) << (int)moduleId << slug.c_str() << name.c_str() << author.c_str() << nameInRack.c_str() << position.x << position.y << size.x << size.y  << (int)nbInputs << (int)nbOutputs << (int)nbPotentiometers << (int)nbSwitches << (int)nbLEDs << osc::EndMessage;
-    transmitSocket.Send(packet.Data(), packet.Size());
-}
 void OSCManagement::send(const char *address, float value) {
     UdpTransmitSocket transmitSocket(IpEndpointName(rtBrokerIp, rtBrokerPort));
     osc::OutboundPacketStream packet(buffer, 1024);

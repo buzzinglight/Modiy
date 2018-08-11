@@ -77,7 +77,7 @@ public:
 struct PhysicalSync;
 struct RTBrokerMenu : MenuItem {
     PhysicalSync *physicalSync;
-    const char *oscMessage;
+    const char *oscAddress;
     void onAction(EventAction &e) override;
 };
 struct AudioPresetMenu : MenuItem {
@@ -161,7 +161,7 @@ private:
     bool oscServerJustStart = false;
     int oscPort = 57130;
     void startOSCServer();
-    inline void logToOsc(std::string message);
+    inline void logV(std::string message);
 
     //Cache management
     float updateCacheLastTime = 0;
@@ -203,7 +203,7 @@ public:
     void dumpJacks         (const char *address) override;
 
     //Communication
-    void send(const char *message) override;
+    void send(const char *address) override;
     void pongReceived() override;
 
 public:
