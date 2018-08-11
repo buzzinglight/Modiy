@@ -602,9 +602,6 @@ function updateCache(step) {
 				module.container.drawingText2.alpha = module.container.drawingText2.alphaBefore = 0.75;
 				module.container.addChild(module.container.drawingText);
 				module.container.addChild(module.container.drawingText2);
-				cache.items.push(module.container.drawing);
-				cache.items.push(module.container.drawingText);
-				cache.items.push(module.container.drawingText2);
 				
 				//Input jacks
 				$.each(module.inputs, function(index, item) {
@@ -684,12 +681,12 @@ function drawItem(module, item) {
 		//Items to draw
 		var itemTypeSimplified = item.type.split("_")[0];
 		item.container.drawing = PIXI.Sprite.from(cache.resources[item.type].texture);
-		item.container.drawing.width = item.container.drawing.height = (mm2px(prices[itemTypeSimplified][0].size.width) + mm2px(prices[itemTypeSimplified][0].size.height))/2;
+		item.container.drawing.width = item.container.drawing.height = mm2px(prices[itemTypeSimplified][0].size.width) + mm2px(prices[itemTypeSimplified][0].size.height);
 	
 		//Visual icon + color + offsets
 		var color = palette.stroke;
 		var textColor = ((item.type == "potentiometers") || (item.type == "switchesT") || (item.type == "switchesM") || (item.type.indexOf("output") >= 0))?(palette.stroke):(palette.background);
-		var textOffset = {x: 0, y: (item.isToggle)?(10):(0)}, textSize = 9;
+		var textOffset = {x: 0, y: (item.isToggle)?(20):(0)}, textSize = 18;
 	
 		//Draw stuff
 		item.container.drawing.tint = color;
@@ -700,9 +697,9 @@ function drawItem(module, item) {
 		
 		//Occupation
 		item.container.space = new PIXI.Graphics();
-		item.container.space.alpha = 0.5;
+		item.container.space.alpha = item.container.space.alphaBefore = 0.33;
 		item.container.space.lineStyle(1, color);
-		item.container.space.drawRect(-mm2px(prices[itemTypeSimplified][0].size.width)/2, -mm2px(prices[itemTypeSimplified][0].size.height)/2, mm2px(prices[itemTypeSimplified][0].size.width), mm2px(prices[itemTypeSimplified][0].size.height)+1);
+		item.container.space.drawRect(-mm2px(prices[itemTypeSimplified][0].size.width), -mm2px(prices[itemTypeSimplified][0].size.height), mm2px(prices[itemTypeSimplified][0].size.width)*2, mm2px(prices[itemTypeSimplified][0].size.height)*2);
 		item.container.addChild(item.container.space);
 	
 		//IDs
@@ -722,14 +719,8 @@ function drawItem(module, item) {
 		item.container.drawingText.position.y = textOffset.y - item.container.drawingText.height/2 + 1;
 		item.container.addChild(item.container.drawingText);
 
-		//Add wiring ID
-		//item.container.drawingText2 = new PIXI.Text(secondId, {fontFamily : module.container.drawingText.style.fontFamily, fontWeight: 200, fontSize: max(7, textSize-3), fill : palette.stroke});
-		//item.container.drawingText2.position.x = -item.container.drawingText2.width/2;
-		//item.container.drawingText2.position.y =  item.container.drawing.height/2 + 1;
-		//item.container.drawingText2.alpha = 0.75;
-		//item.container.addChild(item.container.drawingText2);
-	
 		//Events
+		item.container.scale.x = item.container.scale.y = 0.5;
 		cache.items.push(item.container);
 		item.container.drawing.interactive = true;
 		item.container.drawing.buttonMode = true;
@@ -739,7 +730,7 @@ function drawItem(module, item) {
 				if(item != clickedItem)
 					item.alpha = 0.1;
 				else
-					item.scale.x = item.scale.y = 2;
+					item.scale.x = item.scale.y = 1;
 			});
 		});
 		item.container.drawing.on('pointerup', function() {
@@ -748,7 +739,7 @@ function drawItem(module, item) {
 					item.alpha = item.alphaBefore;
 				else
 					item.alpha = 1;
-				item.scale.x = item.scale.y = 1;
+				item.scale.x = item.scale.y = 0.5;
 			});
 		});
 	}
