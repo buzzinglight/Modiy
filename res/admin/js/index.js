@@ -1,5 +1,4 @@
 //Démarrage du système
-var app;
 $(document).ready(function() {
 	//Cache of images
 	var loader = PIXI.loaders.shared;
@@ -45,6 +44,9 @@ $(document).ready(function() {
 			else
 				sendWebsockets(undefined, "127.0.0.1");
 			messagePrefix = "/osc 127.0.0.1 57130 ";
+			
+			//Colors
+			app.baseColors = app.baseColorsScreen;
 		
 			//LEDs refresh
 			setInterval(function() {
@@ -57,23 +59,31 @@ $(document).ready(function() {
 					$(this).removeClass("checked").text("Show pin numbers");
 				else
 					$(this).addClass("checked").text("Show IDs")
-				cache.showPins = $(this).hasClass("checked");
+				app.showPins = $(this).hasClass("checked");
 				updateCache("force");
 			});
 			$("#showPins").trigger("click");
 
 			//Refresh test
-			$("#print").click(function() {
-				cache.print = !cache.print;
+			function printCommon() {
+				app.baseColors = app.baseColorsPrint;
 				updateCache("force");
 				//return;
 				setTimeout(function() {
 					window.print();
-					cache.print = false;
+					app.print = 0;
+					app.baseColors = app.baseColorsScreen;
 					updateCache("force");
 				}, 1000);
+			}
+			$("#print1").click(function() {
+				app.print = 1;
+				printCommon();
 			});
-			//$("#print").trigger("click");
+			$("#print2").click(function() {
+				app.print = 2;
+				printCommon();
+			});
 		});
 	});
 });

@@ -32,6 +32,7 @@ function websocketReception(message) {
 					nbPotentiometers: parseInt(message[12], 10),
 					nbSwitches:       parseInt(message[13], 10),
 					nbLights: 	      parseInt(message[14], 10),
+					panel: 	          message[15],
 					wiring:           {board: undefined, boards: {}},
 					inputs: 	      [], 
 					outputs: 	      [], 

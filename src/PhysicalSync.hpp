@@ -15,6 +15,8 @@
 #include <iomanip>
 #include <sstream>
 #include <algorithm>
+#include <dirent.h>
+#include <map>
 
 //Classes needed for module caching
 struct Potentiometer {
@@ -60,7 +62,7 @@ public:
     std::vector<Switch> switches;
     std::vector<JackInput> inputs;
     std::vector<JackOutput> outputs;
-    std::string name;
+    std::string name, panel;
     std::string tmpName;
     int moduleId = -1;
 };
@@ -216,6 +218,13 @@ public:
                 return (module1.widget->box.pos.y < module2.widget->box.pos.y);
         }
     };
+
+private:
+    std::map<std::string, std::string> hashCache, panelCache;
+public:
+    const std::string hash(const std::string &key, const std::string &filename, bool *inCache = 0);
+    const std::string hash(const std::string &key, std::shared_ptr<SVG> svgPtr, bool *inCache = 0);
+    static std::string findPath(Plugin *plugin, std::string filepath, std::string filename = "");
 };
 
 

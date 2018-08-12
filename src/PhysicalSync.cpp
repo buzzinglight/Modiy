@@ -92,21 +92,21 @@ void PhysicalSync::updateCache(bool force) {
         Modul::modules.clear();
         Modul::modulesWithIgnored.clear();
         for (Widget *w : gRackWidget->moduleContainer->children) {
-            Modul moduleWithId;
-            moduleWithId.widget = dynamic_cast<ModuleWidget*>(w);
+            Modul modul;
+            modul.widget = dynamic_cast<ModuleWidget*>(w);
 
             //If the module has a widget and a module
-            if((moduleWithId.widget) && (moduleWithId.widget->module != NULL)) {
+            if((modul.widget) && (modul.widget->module != NULL)) {
                 //Store potentiometers and switches
-                for(unsigned int parameterId = 0 ; parameterId < moduleWithId.widget->params.size() ; parameterId++) {
-                    ParamWidget *parameter = moduleWithId.widget->params.at(parameterId);
+                for(unsigned int parameterId = 0 ; parameterId < modul.widget->params.size() ; parameterId++) {
+                    ParamWidget *parameter = modul.widget->params.at(parameterId);
                     if(parameter->visible) {
+                        //Tries to find the best base class
                         ToggleSwitch    *isToggle = NULL;
                         MomentarySwitch *isMomentary = NULL;
                         LEDBezel        *hasLED1 = NULL;
                         LEDButton       *hasLED2 = NULL;
                         LEDBezelButton  *hasLED3 = NULL;
-
                         try { isToggle = dynamic_cast<ToggleSwitch*>(parameter); }
                         catch(const std::bad_cast& e) { isToggle = NULL; }
                         try { isMomentary = dynamic_cast<MomentarySwitch*>(parameter); }
@@ -118,69 +118,148 @@ void PhysicalSync::updateCache(bool force) {
                         try { hasLED3 = dynamic_cast<LEDBezelButton*>(parameter); }
                         catch(const std::bad_cast& e) { hasLED3 = NULL; }
 
+                        //Verdict!
                         if((isToggle) || (isMomentary)) {
                             Switch button;
                             button.isToggle = isToggle;
                             button.hasLED = hasLED1 || hasLED2 || hasLED3;
                             button.widget = parameter;
-                            moduleWithId.switches.push_back(button);
+                            modul.switches.push_back(button);
                         }
                         else {
                             Potentiometer potentiometer;
                             potentiometer.widget = parameter;
-                            moduleWithId.potentiometers.push_back(potentiometer);
+                            modul.potentiometers.push_back(potentiometer);
                         }
                     }
                 }
 
                 //Store inputs and outputs
-                for(unsigned int inputId = 0 ; inputId < moduleWithId.widget->inputs.size() ; inputId++) {
-                    Port *input = moduleWithId.widget->inputs.at(inputId);
+                for(unsigned int inputId = 0 ; inputId < modul.widget->inputs.size() ; inputId++) {
+                    Port *input = modul.widget->inputs.at(inputId);
                     if(input->visible) {
                         JackInput inputWithId;
-                        inputWithId.input  = moduleWithId.widget->module->inputs.at(inputId);
+                        inputWithId.input  = modul.widget->module->inputs.at(inputId);
                         inputWithId.port = input;
-                        moduleWithId.inputs.push_back(inputWithId);
+                        modul.inputs.push_back(inputWithId);
                     }
                 }
-                for(unsigned int outputId = 0 ; outputId < moduleWithId.widget->outputs.size() ; outputId++) {
-                    Port *output = moduleWithId.widget->outputs.at(outputId);
+                for(unsigned int outputId = 0 ; outputId < modul.widget->outputs.size() ; outputId++) {
+                    Port *output = modul.widget->outputs.at(outputId);
                     if(output->visible) {
                         JackOutput outputWithId;
-                        outputWithId.output = moduleWithId.widget->module->outputs.at(outputId);
+                        outputWithId.output = modul.widget->module->outputs.at(outputId);
                         outputWithId.port = output;
-                        moduleWithId.outputs.push_back(outputWithId);
+                        modul.outputs.push_back(outputWithId);
                     }
                 }
 
                 //Store LEDs excepted ones from this module
-                if(moduleWithId.widget->module != this) {
+                if(modul.widget->module != this) {
                     //Find LEDs widgets
                     std::vector<ModuleLightWidget*> ledsWidget;
-                    for (Widget *w : moduleWithId.widget->children) {
+                    for (Widget *widget : modul.widget->children) {
                         try {
-                            ModuleLightWidget *ledWidget = dynamic_cast<ModuleLightWidget*>(w);
+                            ModuleLightWidget *ledWidget = dynamic_cast<ModuleLightWidget*>(widget);
                             if((ledWidget) && (ledWidget->visible))
                                 ledsWidget.push_back(ledWidget);
-                        } catch(const std::bad_cast& e) {
-                        }
+                        } catch(const std::bad_cast& e) { }
                     }
                     //Associate LED with widgets
-                    for(unsigned int ledId = 0 ; ledId < moduleWithId.widget->module->lights.size() ; ledId++) {
+                    for(unsigned int ledId = 0 ; ledId < modul.widget->module->lights.size() ; ledId++) {
                         if(ledId < ledsWidget.size()) {
                             LED led;
-                            led.light  = moduleWithId.widget->module->lights.at(ledId);
+                            led.light  = modul.widget->module->lights.at(ledId);
                             led.widget = ledsWidget.at(ledId);
-                            moduleWithId.leds.push_back(led);
+                            modul.leds.push_back(led);
                         }
                     }
                 }
 
+                //Find panel path
+                if(modul.widget->panel) {
+                    Model *model = modul.widget->model;
+                    std::string panelFile;
+                    bool hasUsedCache = true, hasUsedHash = false;
+                    unsigned int hashCount = 0;
+
+                    //Tries to find panel file in cache
+                    if(panelCache.find(model->slug) != panelCache.end())
+                        panelFile = panelCache.at(model->slug);
+                    else {
+                        hasUsedCache = false;
+
+                        //Tries to find with slug name
+                        panelFile = findPath(model->plugin, "res/", model->slug + ".svg");
+                        if(panelFile == "") {
+                            hasUsedHash = true;
+
+                            //Tries to find by comparing SVG files
+                            for (Widget *widget : modul.widget->panel->children) {
+                                try {
+                                    SVGWidget *svgWidget = dynamic_cast<SVGWidget*>(widget);
+                                    if(svgWidget) {
+                                        std::string resPath = findPath(model->plugin, "res");
+                                        if(resPath != "") {
+                                            std::string panelKey = model->slug;
+                                            std::string panelHash = hash(panelKey, svgWidget->svg);
+
+                                            //Browse files
+                                            DIR *dir;
+                                            struct dirent *ent;
+                                            if ((dir = opendir(resPath.c_str())) != NULL) {
+                                                panelFile = "";
+                                                while ((ent = readdir(dir)) != NULL) {
+                                                    if(panelFile == "") {
+                                                        panelFile = ent->d_name;
+                                                        std::size_t found = panelFile.rfind(".svg");
+                                                        if (found != std::string::npos) {
+                                                            bool inCache = false;
+                                                            panelFile = resPath + "/" + panelFile;
+                                                            std::string testHash = hash(panelFile, panelFile, &inCache);
+                                                            if(inCache)
+                                                                hashCount++;
+                                                            if(testHash != panelHash)
+                                                                panelFile = "";
+                                                        }
+                                                        else
+                                                            panelFile = "";
+                                                    }
+                                                }
+                                                closedir(dir);
+                                            }
+                                            else
+                                                info("[%s] Directory not found: %s", model->slug.c_str(), resPath.c_str());
+                                        }
+                                        else
+                                            info("[%s] Directory not found", model->slug.c_str());
+                                    }
+                                } catch(const std::bad_cast& e) { }
+                            }
+                        }
+
+                        //Insert into cache
+                        if(panelFile != "")
+                            panelCache.insert(std::make_pair(model->slug, panelFile));
+                    }
+
+                    //Panel file OK
+                    if(panelFile != "") {
+                        if(!hasUsedCache)
+                            info("Module %s panel is located in %s (%d | %d | %d)", model->slug.c_str(), panelFile.c_str(), hasUsedCache, hasUsedHash, hashCount);
+                    }
+                    else
+                        warn("%s\tnot found (%d | %d | %d)", model->slug.c_str(), hasUsedCache, hasUsedHash, hashCount);
+
+                    //Store info
+                    modul.panel = panelFile;
+                }
+
                 //Name of module
-                moduleWithId.tmpName = moduleWithId.widget->model->name;
+                modul.tmpName = modul.widget->model->name;
 
                 //Add to container
-                Modul::modules.push_back(moduleWithId);
+                Modul::modules.push_back(modul);
             }
         }
 
@@ -237,23 +316,23 @@ void PhysicalSync::updateCache(bool force) {
         if(debug)
             info("MODULES");
         for(unsigned int moduleId = 0 ; moduleId < Modul::modules.size() ; moduleId++) {
-            const Modul moduleWithId = Modul::modules.at(moduleId);
-            ModuleWidget *widget = moduleWithId.widget;
+            const Modul modul = Modul::modules.at(moduleId);
+            ModuleWidget *widget = modul.widget;
             Module *module = widget->module;
             Model  *model  = widget->model;
             if((module) && (model)) {
                 if(debug) {
-                    info("Module %d : %s %s @ (%f %f) (I/O/P/S/L : %d %d %d %d %d)", moduleId, model->slug.c_str(), model->name.c_str(), widget->box.pos.x, widget->box.pos.y, moduleWithId.inputs.size(), moduleWithId.outputs.size(), moduleWithId.potentiometers.size(), moduleWithId.switches.size(), moduleWithId.leds.size());
-                    for(unsigned int inputId = 0 ; inputId < moduleWithId.inputs.size() ; inputId++)
-                        info("Input %d : %d", inputId, moduleWithId.inputs.at(inputId).input.active);
-                    for(unsigned int outputId = 0 ; outputId < moduleWithId.outputs.size() ; outputId++)
-                        info("Output %d : %d", outputId, moduleWithId.outputs.at(outputId).output.active);
-                    for(unsigned int potentiometerId = 0 ; potentiometerId < moduleWithId.potentiometers.size() ; potentiometerId++)
-                        info("Potentiometer %d : %f", potentiometerId, moduleWithId.potentiometers.at(potentiometerId).widget->value);
-                    for(unsigned int switchId = 0 ; switchId < moduleWithId.switches.size() ; switchId++)
-                        info("Switch %d : %f", switchId, moduleWithId.switches.at(switchId).widget->value);
-                    for(unsigned int ledId = 0 ; ledId < moduleWithId.leds.size() ; ledId++)
-                        info("LED %d : %f", ledId, moduleWithId.leds.at(ledId).light.value);
+                    info("Module %d : %s %s @ (%f %f) (I/O/P/S/L : %d %d %d %d %d)", moduleId, model->slug.c_str(), model->name.c_str(), widget->box.pos.x, widget->box.pos.y, modul.inputs.size(), modul.outputs.size(), modul.potentiometers.size(), modul.switches.size(), modul.leds.size());
+                    for(unsigned int inputId = 0 ; inputId < modul.inputs.size() ; inputId++)
+                        info("Input %d : %d", inputId, modul.inputs.at(inputId).input.active);
+                    for(unsigned int outputId = 0 ; outputId < modul.outputs.size() ; outputId++)
+                        info("Output %d : %d", outputId, modul.outputs.at(outputId).output.active);
+                    for(unsigned int potentiometerId = 0 ; potentiometerId < modul.potentiometers.size() ; potentiometerId++)
+                        info("Potentiometer %d : %f", potentiometerId, modul.potentiometers.at(potentiometerId).widget->value);
+                    for(unsigned int switchId = 0 ; switchId < modul.switches.size() ; switchId++)
+                        info("Switch %d : %f", switchId, modul.switches.at(switchId).widget->value);
+                    for(unsigned int ledId = 0 ; ledId < modul.leds.size() ; ledId++)
+                        info("LED %d : %f", ledId, modul.leds.at(ledId).light.value);
                 }
             }
         }
@@ -332,13 +411,13 @@ void PhysicalSync::step() {
 
         //Current directory and realtime message broker path
 #ifdef ARCH_MAC
-        rtBrokerPath = assetPlugin(plugin, "res/Realtime Message Broker.app/Contents/MacOS/Realtime Message Broker");
+        rtBrokerPath = findPath(plugin, "res/", "Realtime Message Broker.app/Contents/MacOS/Realtime Message Broker");
 #endif
 #ifdef ARCH_WIN
-        rtBrokerPath = assetPlugin(plugin, "res/Realtime Message Broker.exe");
+        rtBrokerPath = findPath(plugin, "res/", "Realtime Message Broker.exe");
 #endif
 #ifdef ARCH_LIN
-        rtBrokerPath = assetPlugin(plugin, "res/RTBroker");
+        rtBrokerPath = findPath(plugin, "res/", "RTBroker");
 #endif
         info("Checks if realtime message broker is present at %s", rtBrokerPath.c_str());
         if(FILE *file = fopen(rtBrokerPath.c_str(), "r")) {
@@ -911,7 +990,6 @@ void PhysicalSync::dumpSwitches(const char *address) {
         //Send bundle
         bundle << osc::BeginMessage(address) << "end" << osc::EndMessage;
         bundle << osc::EndBundle;
-        info("%d", bundle.Size());
         transmitSocket.Send(bundle.Data(), bundle.Size());
     }
 }
@@ -997,6 +1075,7 @@ void PhysicalSync::dumpModules(const char *address) {
                        << (int)module.widget->box.pos.x  << (int)module.widget->box.pos.y
                        << (int)module.widget->box.size.x << (int)module.widget->box.size.y
                        << (int)module.inputs.size() << (int)module.outputs.size() << (int)module.potentiometers.size() << (int)module.switches.size() << (int)module.leds.size()
+                       << module.panel.c_str()
                        << osc::EndMessage;
         }
 
@@ -1014,6 +1093,88 @@ void PhysicalSync::pongReceived() {
     isRTBrokerTalking = true;
     isRTBrokerTalkingCounter = 0;
 }
+const std::string PhysicalSync::hash(const std::string &key, const std::string &filename, bool *inCache) {
+    //Tries to find element in cache
+    if(hashCache.find(key) != hashCache.end()) {
+        if(inCache) *inCache = true;
+        return hashCache.at(key);
+    }
+
+    //Load file and store
+    std::shared_ptr<SVG> svgPtr = SVG::load(filename);
+    return hash(key, svgPtr, inCache);
+}
+const std::string PhysicalSync::hash(const std::string &key, std::shared_ptr<SVG> svgPtr, bool *inCache) {
+    std::string hash;
+
+    //Tries to find element in cache
+    if(hashCache.find(key) != hashCache.end()) {
+        if(inCache) *inCache = true;
+        hash = hashCache.at(key);
+    }
+    else {
+        if(inCache) *inCache = false;
+
+        SVG *svg = svgPtr.get();
+        if(svg) {
+            hash += "<";
+            unsigned int shapeIndex = 0;
+            if(svg->handle->shapes) {
+                for (NSVGshape *shape = svg->handle->shapes; shape; shape = shape->next, shapeIndex++) {
+                    hash += "‹";
+                    unsigned int pathIndex = 0;
+                    if(shape->paths) {
+                        for (NSVGpath *path = shape->paths; path; path = path->next, pathIndex++)
+                            hash += std::to_string(path->npts) + ",";
+                    }
+                    hash += "›" + std::to_string(pathIndex) + ",";
+                }
+            }
+            hash += ">" + std::to_string(shapeIndex);
+        }
+
+        //Insert into cache
+        hashCache.insert(std::make_pair(key, hash));
+    }
+    return hash;
+}
+std::string PhysicalSync::findPath(Plugin *plugin, std::string filepath, std::string filename) {
+    std::string path;
+
+    //Tries to find where the file can be…
+    path = assetPlugin(plugin, filepath + filename);
+    if(FILE *file = fopen(path.c_str(), "r"))
+        fclose(file);
+    else {
+        path = assetLocal(filepath + filename);
+        //info("Looking for local asset %s", path.c_str());
+        if(FILE *file = fopen(path.c_str(), "r"))
+            fclose(file);
+        else {
+            path = assetGlobal(filepath + filename);
+            //info("Looking for global asset %s", path.c_str());
+            if(FILE *file = fopen(path.c_str(), "r"))
+                fclose(file);
+            else {
+                path = assetGlobal(filepath + "Core/" + filename);
+                //info("Looking for core asset %s", path.c_str());
+                if(FILE *file = fopen(path.c_str(), "r"))
+                    fclose(file);
+                else
+                    path = "";
+            }
+        }
+    }
+
+    //Return real path
+    if(path != "") {
+        char pathBuffer[PATH_MAX + 1];
+        if(realpath(path.c_str(), pathBuffer))
+            path = pathBuffer;
+    }
+    return path;
+}
+
 
 
 

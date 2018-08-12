@@ -8,3 +8,4 @@ build/*
 res/Realtime Message Broker.app/*
 res/Realtime Message Broker.exe/*
 res/RTBroker
+deploy.command
