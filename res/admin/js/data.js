@@ -5,7 +5,7 @@ var prices = {
 		{
 			name:   "Jacks",
 			source: "http://fr.farnell.com/cliff-electronic-components/fc681374v/connecteur-audio-jack-3-5mm-3pos/dp/2431939",
-			size: 	{width: 8, height: 10.5}, //mm
+			size: 	{width: 8, height: 10.5}, //mm / ø6mm hole
 			prices: {
 				"1":    0.998,
 				"50":   0.58,
@@ -20,7 +20,7 @@ var prices = {
 		{
 			name:   "Jacks",
 			source: "http://fr.farnell.com/multicomp/mj-074n/embase-jack-3-5mm-3p/dp/1267374",
-			size: 	{width: 8, height: 10.5}, //mm
+			size: 	{width: 8, height: 10.5}, //mm / ø6mm hole
 			prices: {
 				"1":   1.15,
 				"25":  0.954,
@@ -36,7 +36,7 @@ var prices = {
 			name:      "Potentiometer",
 			source:    "http://fr.farnell.com/bi-technologies-tt-electronics/p160knp-0qc20b10k/potentiometre-rotatif-10k-20mm/dp/1760793",
 			sourceAlt: "http://fr.farnell.com/bi-technologies-tt-electronics/p160knp-0ec15b10k/potentiometre-rotatif-10k-15mm/dp/1684813",
-			size: 		{width: 17, height: 20}, //mm
+			size: 		{width: 17, height: 20}, //mm / ø6mm hole
 			prices: {
 				"1":    0.954,
 				"10":   0.673,
@@ -63,15 +63,18 @@ var prices = {
 	leds: [
 		{
 			name:   "LEDs",
-			source: "http://fr.farnell.com/kingbright/l-1503gc/led-5mm-vert-100mcd-568nm/dp/2335730?MER=bn_level5_5NP_EngagementRecSingleItem_4",
-			size: 	{width: 5, height: 5}, //mm
+			source:     "http://fr.farnell.com/kingbright/l-7083cgdk/led-5mm-green-100mcd-570nm/dp/2449735",
+			sourceAltR: "http://fr.farnell.com/kingbright/l-7083surdk/led-5mm-red-200mcd-630nm/dp/2449738",
+			sourceAltG: "http://fr.farnell.com/kingbright/l-7083cgdk/led-5mm-green-100mcd-570nm/dp/2449735",
+			sourceAltO: "http://fr.farnell.com/kingbright/l-7083sedk/led-5mm-orange-400mcd-601nm/dp/2449737",
+			size: 	{width: 5, height: 5}, //mm / ø5mm hole
 			prices: {
-				"5":    0.0739,
-				"25":   0.0709,
-				"100":  0.0679,
-				"250":  0.0649,
-				"500":  0.062,
-				"1000": 0.0589
+				"5":    0.151,
+				"25":   0.121,
+				"100":  0.101,
+				"250":  0.0848,
+				"500":  0.075,
+				"1000": 0.0668,
 			}
 		},
 		{
@@ -177,13 +180,22 @@ var prices = {
 				"100": 4.60
 			}
 		}		
+	],
+	wood: [
+		{
+			name:   "Wood panel",
+			source: "https://www.leroymerlin.fr/v3/p/produits/predecoupe-contreplaque-peuplier-ep-5-mm-l-80-x-l-40-cm-e1401453621?queryredirect=a_fp_predecoupe_contreplaque_peuplier__ep_5_mm_l_80_x_l_40_cm",
+			prices: {
+				"1":   5.75 / 3200,// 80cm x 40cm = 3200cm² = 5.75
+			}
+		}
 	]
 }
 
 function calculatePrices() {
 	if(cache.modules.length) {
 		//Calculate JALS
-		cache.jals        = {jacks: 0, potentiometers: 0, switches: 0, leds: 0, audioJacks: 0, switchesM: 0, switchesT: 0, wiresMM: 0, wiresFF: 0};
+		cache.jals        = {jacks: 0, potentiometers: 0, switches: 0, leds: 0, audioJacks: 0, switchesM: 0, switchesT: 0, wiresMM: 0, wiresFF: 0, wood: 0};
 		cache.consumption = {jacks: 0, potentiometers: 0, switches: 0, leds: 0, total: 0};
 		$.each(cache.modules, function(index, module) {
 			//In + Size
@@ -198,7 +210,8 @@ function calculatePrices() {
 				switchesT: 	 	 0,
 				wiresMM:         0,
 				wiresFF:         ((module.nbPotentiometers > 0) || (module.nbLights > 0))?(2):(0),
-				boards: 		 0, 
+				boards: 		 0,
+				wood: 			 (module.size.mm.width * module.size.mm.height) / 100
 			};
 			module.jals.consumption = {
 				jacks: 			module.jals.size.jacks          / cache.arduino.jacks.length,
@@ -241,6 +254,7 @@ function calculatePrices() {
 			audioJacks:     {value: cache.jals.audioJacks},
 			audioInterface: {value: ceil(cache.jals.audioJacks / 16)}, //<— based on a 16-channel audio interface
 			usb: 			{value: 1},
+			wood: 			{value: ceil(cache.jals.wood)},
 			wiresMM:        {value: cache.jals.wiresMM},
 			wiresFF:        {value: cache.jals.wiresFF},
 			boards:         {value: 0},
@@ -337,11 +351,12 @@ function calculatePrices() {
 		
 		//Check if there is no remaining/forgotten parts
 		console.log(cache.modules);
-		console.log(totalPrice, JSON.parse(JSON.stringify(cache.partList)));
 		
 		//Price display by parts
 		$.each(cache.partList, function(type, part) {
-			var html = "×" + part.value;
+			var html;
+			if(type == "wood")	html = part.value + "cm²";
+			else				html = "×" + part.value;
 			for(var i = 0 ; i < prices[type].length ; i++) {
 				if(i > 0)
 					html += "&nbsp;+";
