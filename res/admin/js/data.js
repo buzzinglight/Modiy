@@ -149,10 +149,10 @@ var prices = {
 	],
 	wiresFF: [
 		{
-			name:   "Wires Female-Female",
-			source: "https://www.amazon.fr/Ganvol-40-câbles-20-dexpérimentation-dordinateur/dp/B01LWAXJJS/ref=sr_1_15?ie=UTF8&qid=1533917655&sr=8-15&keywords=dupont+connecteur",
+			name:   "Wires Female header",
+			source: "https://www.amazon.fr/Aihasd-Femelle-Cavalier-Arduino-Breadboard/dp/B072Q9WFRK/ref=sr_1_1?ie=UTF8&qid=1534169099&sr=8-1&keywords=dupont%2Bcable%2B30cm&th=1",
 			prices: {
-				"1": 3.95 / 40,
+				"1": 2.85 / 40,
 			}
 		}
 	],
@@ -209,7 +209,7 @@ function calculatePrices() {
 				switchesM: 	 	 0,
 				switchesT: 	 	 0,
 				wiresMM:         0,
-				wiresFF:         ((module.nbPotentiometers > 0) || (module.nbLights > 0))?(2):(0),
+				wiresFF:         ((module.nbPotentiometers > 0) || (module.nbLights > 0))?(1):(0),
 				boards: 		 0,
 				wood: 			 (module.size.mm.width * module.size.mm.height) / 100
 			};
