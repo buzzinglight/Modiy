@@ -47,11 +47,6 @@ $(document).ready(function() {
 			
 			//Colors
 			app.baseColors = app.baseColorsScreen;
-		
-			//LEDs refresh
-			setInterval(function() {
-				updateCache();
-			}, 2000);
 			
 			//Show pins
 			$("#showPins").click(function() {
@@ -60,20 +55,25 @@ $(document).ready(function() {
 				else
 					$(this).addClass("checked").text("Show IDs")
 				app.showPins = $(this).hasClass("checked");
-				updateCache("force");
+				updateCacheFinished();
 			});
 			$("#showPins").trigger("click");
+			
+			//Update
+			$("#update").click(function() {
+				updateCache();
+			});
 
 			//Refresh test
 			function printCommon() {
 				app.baseColors = app.baseColorsPrint;
-				updateCache("force");
+				updateCacheFinished();
 				//return;
 				setTimeout(function() {
 					window.print();
 					app.print = 0;
 					app.baseColors = app.baseColorsScreen;
-					updateCache("force");
+					updateCacheFinished();
 				}, 1000);
 			}
 			$("#print1").click(function() {

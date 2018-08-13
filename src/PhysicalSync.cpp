@@ -1251,10 +1251,18 @@ PhysicalSyncWidget::PhysicalSyncWidget(PhysicalSync *physicalSync) : ModuleWidge
 void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
     PhysicalSync *physicalSync = dynamic_cast<PhysicalSync*>(module);
     assert(physicalSync);
+    physicalSync->updateCache();
+    menu->addChild(MenuSeparator::create());
 
     //Realtime Message Broker options
     if(physicalSync->osc) {
-        menu->addChild(MenuEntry::create());
+        menu->addChild(MenuLabel::create("Settings"));
+
+        //Webpage page
+        RTBrokerMenu *rtbroker_openWebpage = MenuItem::create<RTBrokerMenu>("Open configuration tools");
+        rtbroker_openWebpage->physicalSync = physicalSync;
+        rtbroker_openWebpage->oscAddress = "/rtbroker/openwebpage";
+        menu->addChild(rtbroker_openWebpage);
 
         //Settings page
         RTBrokerMenu *rtbroker_openSettings = MenuItem::create<RTBrokerMenu>("Serial port settings");
@@ -1263,21 +1271,15 @@ void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
         menu->addChild(rtbroker_openSettings);
 
         //Network page
-        RTBrokerMenu *rtbroker_openNetwork = MenuItem::create<RTBrokerMenu>("Network system settings");
-        rtbroker_openNetwork->physicalSync = physicalSync;
-        rtbroker_openNetwork->oscAddress = "/rtbroker/opennetwork";
-        menu->addChild(rtbroker_openNetwork);
-
-        //Webpage page
-        RTBrokerMenu *rtbroker_openWebpage = MenuItem::create<RTBrokerMenu>("Open webpage");
-        rtbroker_openWebpage->physicalSync = physicalSync;
-        rtbroker_openWebpage->oscAddress = "/rtbroker/openwebpage";
-        menu->addChild(rtbroker_openWebpage);
+        //RTBrokerMenu *rtbroker_openNetwork = MenuItem::create<RTBrokerMenu>("Network system settings");
+        //rtbroker_openNetwork->physicalSync = physicalSync;
+        //rtbroker_openNetwork->oscAddress = "/rtbroker/opennetwork";
+        //menu->addChild(rtbroker_openNetwork);
     }
 
     //Audio presets
     if(true) {
-        menu->addChild(MenuEntry::create());
+        menu->addChild(MenuLabel::create("Audio presets"));
 
         AudioPresetMenu *changeChannels2 = MenuItem::create<AudioPresetMenu>("Stereo audio I/O", CHECKMARK(physicalSync->getChannels() == 2));
         changeChannels2->physicalSync = physicalSync;
@@ -1295,7 +1297,7 @@ void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
 
     //Module ignore
     if(physicalSync->osc) {
-        menu->addChild(MenuEntry::create());
+        menu->addChild(MenuLabel::create("Modules to ignore"));
 
         for(unsigned int moduleId = 0 ; moduleId < Modul::modulesWithIgnored.size() ; moduleId++) {
             const Modul module = Modul::modulesWithIgnored.at(moduleId);

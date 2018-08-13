@@ -168,11 +168,6 @@ private:
     void startOSCServer();
     inline void logV(std::string message);
 
-    //Cache management
-    float updateCacheLastTime = 0;
-    int updateCacheCounter = 0;
-    void updateCache(bool force = false);
-
     //Getters
     JackInput     getInputPort    (unsigned int moduleId, unsigned int inputId);
     JackOutput    getOutputPort   (unsigned int moduleId, unsigned int outputId);
@@ -181,6 +176,13 @@ private:
     LED           getLED          (unsigned int moduleId, unsigned int ledId);
     Modul         getModule       (unsigned int moduleId);
     JackWire      getWire         (unsigned int inputModuleId, unsigned int inputPortId, unsigned int outputModuleId, unsigned int outputPortId);
+
+    //Cache management
+    float updateCacheLastTime = 0;
+    int updateCacheCounter = 0;
+public:
+    void updateCache(bool force = false);
+
 
 //OSC Remote methods
 public:

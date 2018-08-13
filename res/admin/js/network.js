@@ -47,6 +47,8 @@ function websocketReception(message) {
 					width: 		px2mm(module.size.px.width),
 					height: 	px2mm(module.size.px.height)
 				};
+				module.size.px.width  *= app.pxScale;
+				module.size.px.height *= app.pxScale;
 				module.size.eurorack = mm2rack(module.size.mm);
 
 				//Add in container

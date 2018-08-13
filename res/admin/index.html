@@ -47,81 +47,85 @@
 				</div>
 				<h1><img draggable='false' src='img/logo_red.png' height='150'></h1>
 				<h2 class='noTopMargin'>Wiring diagram</h2>
-				<div id='canvasWaiting'>Waiting for VCV-Rack…</div>
+				<div id='modulesWaiting'>Waiting for VCV-Rack…</div>
 			</div>
-			<div id='canvas'></div><br/>
-			<div id='legend'></div>
-			<div class='dontPrint'>
-				<div class='button' id='showPins'></div>
-				<div class='button' id='print1'>Print mounting</div>
-				<div class='button' id='print2'>Print panels</div>
-			</div>
-			<h2>Part list <span class='price'></span></h2>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_arduino.png' height='40'></div>
-				<div class='right' id='nbboards'>Arduino Mega<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_jack.png' height='30'></div>
-				<div class='right' id='nbjacks'>Patching jacks<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_jack_audio.png' height='35'></div>
-				<div class='right' id='nbaudioJacks'>Audio jacks<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_potentiometer.png' height='40'></div>
-				<div class='right' id='nbpotentiometers'>Potentiometers<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_switchT.png' height='32'></div>
-				<div class='right' id='nbswitchesT'>Switches<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_switchM.png' height='32'></div>
-				<div class='right' id='nbswitchesM'>Buttons<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_led.png' height='40'></div>
-				<div class='right' id='nbleds'>LEDs<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_wire.png' height='40'></div>
-				<div class='right' id='nbwiresMM'>Wires M-M<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_wire.png' height='40'></div>
-				<div class='right' id='nbwiresFF'>Wires F-F<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_wood.png' height='40'></div>
-				<div class='right' id='nbwood'>Wood<br/><span>–</span></div>
-			</div>
+			<div id='modules'></div>
+			<div class='printmargins'>
+				<h2 class='doPrint'>Legend</h2>
+				<div id='legend'></div>
+				<div class='dontPrint'>
+					<div class='button' id='update'></div>
+					<div class='button' id='showPins'></div>
+					<div class='button' id='print1'>Print mounting</div>
+					<div class='button' id='print2'>Print panels</div>
+				</div>
+				<h2>Part list <span class='price'></span></h2>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_arduino.png' height='40'></div>
+					<div class='right' id='nbboards'>Arduino Mega<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_jack.png' height='30'></div>
+					<div class='right' id='nbjacks'>Patching jacks<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_jack_audio.png' height='35'></div>
+					<div class='right' id='nbaudioJacks'>Audio jacks<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_potentiometer.png' height='40'></div>
+					<div class='right' id='nbpotentiometers'>Potentiometers<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_switchT.png' height='32'></div>
+					<div class='right' id='nbswitchesT'>Switches<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_switchM.png' height='32'></div>
+					<div class='right' id='nbswitchesM'>Buttons<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_led.png' height='40'></div>
+					<div class='right' id='nbleds'>LEDs<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_wire.png' height='40'></div>
+					<div class='right' id='nbwiresMM'>Wires M-M<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_wire.png' height='40'></div>
+					<div class='right' id='nbwiresFF'>Wires F-F<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_wood.png' height='40'></div>
+					<div class='right' id='nbwood'>Wood<br/><span>–</span></div>
+				</div>
 			
-			<p>&nbsp;</p>
-			<p>And if you don’t own…</p>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_audiointerface.png' height='30'></div>
-				<div class='right' id='nbaudioInterface'>Audio interface<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_usb.png' height='30'></div>
-				<div class='right' id='nbusb'>USB Pass Through<br/><span>–</span></div>
-			</div>
-			<div class='partlist'>
-				<div class='left' ><img src='img/icn_parts_fabricate.png' height='35'></div>
-				<div class='right' id='nbfabricate'>Fabrication<br/><span class='price'>To estimate</span></div>
-			</div>
+				<p>&nbsp;</p>
+				<p>And if you don’t own…</p>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_audiointerface.png' height='30'></div>
+					<div class='right' id='nbaudioInterface'>Audio interface<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_usb.png' height='30'></div>
+					<div class='right' id='nbusb'>USB Pass Through<br/><span>–</span></div>
+				</div>
+				<div class='partlist'>
+					<div class='left' ><img src='img/icn_parts_fabricate.png' height='35'></div>
+					<div class='right' id='nbfabricate'>Fabrication<br/><span class='price'>To estimate</span></div>
+				</div>
 			
 						
-			<div class='dontPrint'>
-				<h2>Arduino</h2>
-				<a href='/arduino/Modiy/Modiy.ino' target='blank'><div class='button' id='download'>Download source code</div></a>
+				<div class='dontPrint'>
+					<h2>Arduino</h2>
+					<a href='/arduino/Modiy/Modiy.ino' target='blank'><div class='button' id='download'>Download source code</div></a>
 
 
-				<h2>Documentation</h2>
-				<a href='https://github.com/buzzinglight/Modiy' target='blank'><div class='button' id='download'>Open GitHub webpage</div></a>
+					<h2>Documentation</h2>
+					<a href='https://github.com/buzzinglight/Modiy' target='blank'><div class='button' id='download'>Open GitHub webpage</div></a>
 
+				</div>
 			</div>
 		
 			<div class='dontPrint' style="opacity: 0; font-family: 'OpenSans'; font-weight: 200; line-height: 0px;">toto</div>
