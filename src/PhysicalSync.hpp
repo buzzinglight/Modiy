@@ -17,6 +17,9 @@
 #include <algorithm>
 #include <dirent.h>
 #include <map>
+#ifdef ARCH_WIN
+    #define realpath(N,R) _fullpath((R),(N),_MAX_PATH)
+#endif
 
 //Classes needed for module caching
 struct Potentiometer {
