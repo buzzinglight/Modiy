@@ -24,7 +24,7 @@ make
 
 ## For all versions
 ### Realtime Message Broker
-- Copy *Realtime Message Broker* binary (https://github.com/buzzinglight/RTBroker/releases) into `Modiy/res/` folder
+- Copy *Realtime Message Broker* binary (https://github.com/buzzinglight/RTBroker/releases) into `Modiy/res/` folder. **Do not copy index.html file.**
 - Launch *Realtime Message Broker*
 ### Arduino source code
 - From the webpage opened by *Realtime Message Broker*, download *Arduino source code* at the bottom of the page and upload it into an Arduino Mega board.
