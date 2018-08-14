@@ -1259,7 +1259,7 @@ void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
         menu->addChild(MenuLabel::create("Settings"));
 
         //Webpage page
-        RTBrokerMenu *rtbroker_openWebpage = MenuItem::create<RTBrokerMenu>("Open configuration tools");
+        RTBrokerMenu *rtbroker_openWebpage = MenuItem::create<RTBrokerMenu>("Open configuration tool");
         rtbroker_openWebpage->physicalSync = physicalSync;
         rtbroker_openWebpage->oscAddress = "/rtbroker/openwebpage";
         menu->addChild(rtbroker_openWebpage);

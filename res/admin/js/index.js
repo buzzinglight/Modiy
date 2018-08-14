@@ -1,5 +1,9 @@
 //Démarrage du système
 $(document).ready(function() {
+	var isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+	if(isChrome)
+		$("body").addClass("chrome")
+	
 	//Cache of images
 	var loader = PIXI.loaders.shared;
 	loader.add('jacks_audio_input',  	'img/icn_jack_audio_input.png')

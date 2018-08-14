@@ -62,11 +62,21 @@ p {
 	background:				#246DAC;
 }
 
+#navigatorWarning {
+	height:					4vh;
+	background:				#F2911B;
+	color:					white;
+	line-height:			4vh;
+	text-align:				center;
+}
+body.chrome #navigatorWarning {
+	display:				none;
+}
 #modules, #modulesWaiting {
 	font-style:				italic;
 	display:				inline-block;
 }
-#modules, #panels>div {
+#modules, #panels .bunch {
 	box-shadow: 			0px 0px 10px 2px rgba(0,0,0,0.3);
 }
 #modules {
@@ -96,10 +106,24 @@ p {
 	overflow-y: 			hidden;
 	padding:				10px;
 }
-#panels>div {
+#panels .bunch {
 	background:				url("../img/wood.jpg") repeat top left;
+	overflow:				hidden;
 }
-#panels>div>div {
+#panels .ruler {
+	position:				relative;
+	height:					20px;
+	border-top:				1px solid #888888;
+	overflow:				hidden;
+	color:					#888888;
+}
+#panels .ruler .tip {
+	position:				absolute;
+	border-left:			1px solid #888888;
+	padding-left:			4px;
+	font-size:				12px;
+}
+#panels .bunch .rotation {
 	mix-blend-mode:			multiply;
 	transform-origin: 		top left;	
 }
@@ -193,7 +217,7 @@ input[type=checkbox] {
 	#container {
 		margin:				0px;
 	}
-	#modules, #panels>div {
+	#modules, #panels .bunch {
 		box-shadow: 		inherit;
 		background:			white;
 	}

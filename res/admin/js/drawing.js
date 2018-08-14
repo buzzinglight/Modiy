@@ -91,11 +91,11 @@ function updateCache(step) {
 function updateCacheFinished() {
 	$("#update").text("Sync with VCV Rack");
 	$(".module").remove();
-	$("#modules, #panels>div>div>div").html("");
+	$("#modules, #panels .ruler, #panels .bunch .rotation .woodPanel").html("");
 	var woodHeight = mm2px(100);
-	$("#panels>div>div>div").css({ width: woodHeight });
-	$("#panels>div>div").css({ transform: "rotate(-90deg) translate(-" + woodHeight + "px,0px)" });
-	$("#panels>div").css({ height: woodHeight });
+	$("#panels .bunch .rotation .woodPanel").css({ width: woodHeight });
+	$("#panels .bunch .rotation").css({ transform: "rotate(-90deg) translate(-" + woodHeight + "px,0px)" });
+	$("#panels .bunch").css({ height: woodHeight });
 	cache.refresh = "";
 	cache.force = false;
 	
@@ -114,7 +114,7 @@ function updateCacheFinished() {
 			forceCanvas:  true
 		});
 		$("#modules").append("<div class='module module" + index + "'><img class='panel' src='' /></div>");
-		$("#panels>div>div>div").append("<div class='module module" + index + "' rotated='true'><img class='panel' src='' /></div>");
+		$("#panels .bunch .rotation .woodPanel").append("<div class='module module" + index + "' rotated='true'><img class='panel' src='' /></div>");
 		module.app.view.domModule = $("#modules .module" + index);
 		module.app.view.domPanel  = $("#panels  .module" + index);
 		module.app.view.domPanels = $(".module" + index);
@@ -222,7 +222,11 @@ function updateCacheFinished() {
 		$(module.app.view).css({width: module.app.view.domModule.width, height: module.app.view.domModule.height()});
 	});
 	
-	$("#panels>div").css({ width: $("#panels>div>div").height() });
+	var totalWidth = $("#panels .bunch .rotation").height();
+	$("#panels>*").css({ width: totalWidth });
+	for(var i = 0 ; i < totalWidth ; i += mm2px(25)) {
+		$("#panels .ruler").append("<div class='tip' style='left: " + i + "px;'>" + round(px2mm(i)/10) + "cm</div>");
+	}
 	
 }
 

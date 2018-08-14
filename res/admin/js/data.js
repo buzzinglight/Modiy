@@ -184,9 +184,18 @@ var prices = {
 	wood: [
 		{
 			name:   "Wood panel",
-			source: "https://www.leroymerlin.fr/v3/p/produits/predecoupe-contreplaque-peuplier-ep-5-mm-l-80-x-l-40-cm-e1401453621?queryredirect=a_fp_predecoupe_contreplaque_peuplier__ep_5_mm_l_80_x_l_40_cm",
+			source: "http://www.rougier-ple.fr/planche-de-balsa-longueur-epaisseur-3-mm-1-m.r.html",
 			prices: {
-				"1":   5.75 / 3200,// 80cm x 40cm = 3200cm² = 5.75
+				"1":   4 / 1000,// 100cm x 10cm = 1000cm²
+			}
+		}
+	],
+	paper: [
+		{
+			name: 	"Adhesive paper",
+			source: "https://www.amazon.fr/feuilles-papier-adhésif-blanc-autocollante/dp/B018RLT7QG/ref=sr_1_2_sspa?rps=1&ie=UTF8&qid=1534240160&sr=8-2-spons&keywords=papier+étiquette&refinements=p_76%3A437878031&psc=1",
+			prices: {
+				"1": 7.99/609, //7.99 per 21×29.8 = 609cm²
 			}
 		}
 	]
