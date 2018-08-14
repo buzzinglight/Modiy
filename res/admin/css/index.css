@@ -66,30 +66,45 @@ p {
 	font-style:				italic;
 	display:				inline-block;
 }
-#modules {
+#modules, #panels>div {
 	box-shadow: 			0px 0px 10px 2px rgba(0,0,0,0.3);
-	background:				white;
-	display:				none;
 }
 #modules {
-	box-shadow: 			0px 0px 10px 2px rgba(0,0,0,0.3);
+	background:				white;
+	display:				none;
 	background:				url("../img/blueprint.jpg") no-repeat center center / cover;
 }
 .module {
-	border:					1px solid transparent;
-	position:				relative;
 	display:				inline-block;
 	background-repeat:		no-repeat no-repeat;
 	background-position:	top left;
 	break-inside: 			avoid;
 }
-.module>* {
-	position:				absolute;
-	top:					0;
-	left:					0;
+#modules .module {
+	border:					1px solid transparent;
+	position:				relative;
 }
-*.module .panel {
+#modules .module>* {
+	position:				absolute;
+}
+#modules *.module .panel {
 	mix-blend-mode:			multiply;
+}
+#panels {
+	width:					100%;
+	overflow-x: 			scroll;
+	overflow-y: 			hidden;
+	padding:				10px;
+}
+#panels>div {
+	background:				url("../img/wood.jpg") repeat top left;
+}
+#panels>div>div {
+	mix-blend-mode:			multiply;
+	transform-origin: 		top left;	
+}
+#panels .module .panel {
+	border:					1px solid rgba(0,0,0,0.4);
 }
 
 .partlist {
@@ -178,7 +193,7 @@ input[type=checkbox] {
 	#container {
 		margin:				0px;
 	}
-	#modules {
+	#modules, #panels>div {
 		box-shadow: 		inherit;
 		background:			white;
 	}

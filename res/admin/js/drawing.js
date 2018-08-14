@@ -91,7 +91,11 @@ function updateCache(step) {
 function updateCacheFinished() {
 	$("#update").text("Sync with VCV Rack");
 	$(".module").remove();
-	$("#modules").html("");
+	$("#modules, #panels>div>div>div").html("");
+	var woodHeight = mm2px(100);
+	$("#panels>div>div>div").css({ width: woodHeight });
+	$("#panels>div>div").css({ transform: "rotate(-90deg) translate(-" + woodHeight + "px,0px)" });
+	$("#panels>div").css({ height: woodHeight });
 	cache.refresh = "";
 	cache.force = false;
 	
@@ -109,9 +113,12 @@ function updateCacheFinished() {
 			sharedLoaded: true,
 			forceCanvas:  true
 		});
-		$("#modules").append("<div class='module' id='module" + index + "'><img class='panel' src='' /></div>");
-		module.app.view.dom = $("#module" + index);
-		module.app.view.dom.append(module.app.view);
+		$("#modules").append("<div class='module module" + index + "'><img class='panel' src='' /></div>");
+		$("#panels>div>div>div").append("<div class='module module" + index + "' rotated='true'><img class='panel' src='' /></div>");
+		module.app.view.domModule = $("#modules .module" + index);
+		module.app.view.domPanel  = $("#panels  .module" + index);
+		module.app.view.domPanels = $(".module" + index);
+		module.app.view.domModule.append(module.app.view);
 
 		//Graphical container for module
 		module.container = new PIXI.Container();
@@ -189,27 +196,34 @@ function updateCacheFinished() {
 		
 		//Panel
 		if(module.panel) {
-			module.app.view.img = $(module.app.view.dom).find("img");
-			module.app.view.img.attr("src", "/?file=" + module.panel).css({
-				width: 	module.size.px.width,
-				height: module.size.px.height,
-				top:    app.margins,
-				left: 	app.margins,
+			$(module.app.view.domPanels).find("img").each(function(index, dom) {
+				dom = $(dom);
+				dom.attr("src", "/?file=" + module.panel).css({
+					width: 	   module.size.px.width,
+					height:    module.size.px.height,
+					top:       app.margins,
+					left: 	   app.margins
+				});
+				dom.attr("src", "/?file=" + module.panel);
+				if(index == 0) {
+					if(app.print != 1)
+						dom.show();
+					else
+						dom.hide();
+				}
 			});
-			module.app.view.img.attr("src", "/?file=" + module.panel);
-			if(app.print != 1)
-				module.app.view.img.show();
-			else
-				module.app.view.img.hide();
 		}
 		if(app.print != 2)
 			module.container.mouting.visible = true;
 		else
 			module.container.mouting.visible = false;
 		
-		module.app.view.dom.css({width: module.app.renderer.width / module.app.renderer.resolution, height: module.app.renderer.height / module.app.renderer.resolution});;
-		$(module.app.view).css({width: module.app.view.dom.width, height: module.app.view.dom.height()});
+		module.app.view.domModule.css({width: module.app.renderer.width / module.app.renderer.resolution, height: module.app.renderer.height / module.app.renderer.resolution});;
+		$(module.app.view).css({width: module.app.view.domModule.width, height: module.app.view.domModule.height()});
 	});
+	
+	$("#panels>div").css({ width: $("#panels>div>div").height() });
+	
 }
 
 //Draw a potentiometer, a LED or a jack
@@ -220,6 +234,16 @@ function drawItem(module, item) {
 		item.container.position.x = item.pos.x * app.pxScale;
 		item.container.position.y = item.pos.y * app.pxScale;
 		module.container.mouting.addChild(item.container);
+		
+		//ModiySync case
+		if(module.slug == "ModiySync") {
+			if(item.inputOrOutputId != undefined)
+				item.container.position.y = map(item.inputOrOutputId, 0,8, 65, 395) * app.pxScale;
+			if(item.type == "jacks_audio_input")
+				item.container.position.x -= 5;
+			else if(item.type == "jacks_audio_output")
+				item.container.position.x += 5;
+		}
 	
 		var palette = app.baseColors[item.wiring.board%3];
 		if(palette == undefined)

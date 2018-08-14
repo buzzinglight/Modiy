@@ -1180,7 +1180,7 @@ std::string PhysicalSync::findPath(Plugin *plugin, std::string filepath, std::st
 
 //Module widget
 PhysicalSyncWidget::PhysicalSyncWidget(PhysicalSync *physicalSync) : ModuleWidget(physicalSync) {
-    setPanel(SVG::load(assetPlugin(plugin, "res/PhysicalSync.svg")));
+    setPanel(SVG::load(assetPlugin(plugin, "res/ModiySync.svg")));
     physicalSync->widget = this;
     SVGWidget *component;
     float y = 44;
