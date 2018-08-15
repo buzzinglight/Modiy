@@ -25,8 +25,8 @@ function websocketReception(message) {
 					name:       	  message[3],
 					author:     	  message[4],
 					nameInRack: 	  message[5],
-					pos:  			  {px: {x:     parseFloat(message[6]), y:      parseFloat(message[7])}},
-					size: 			  {px: {width: parseFloat(message[8]), height: parseFloat(message[9])}},
+					pos:  			  {pxSrc: {x:     parseFloat(message[6]), y:      parseFloat(message[7])}},
+					size: 			  {pxSrc: {width: parseFloat(message[8]), height: parseFloat(message[9])}},
 					nbInputs: 	      parseInt(message[10], 10),
 					nbOutputs: 	      parseInt(message[11], 10),
 					nbPotentiometers: parseInt(message[12], 10),
@@ -42,14 +42,7 @@ function websocketReception(message) {
 					jals: 		      {}
 				};
 				
-				//Eurorack size
-				module.size.px.width  *= app.pxScale;
-				module.size.px.height *= app.pxScale;
-				module.size.mm = { 
-					width: 		px2mm(module.size.px.width),
-					height: 	px2mm(module.size.px.height)
-				};
-				module.size.eurorack = mm2rack(module.size.mm);
+				//Name
 				if(module.slug == "ModiySync") 
 					module.panel = module.panel.replaceAll("ModiySync.svg", "ModiySync_real.svg");
 

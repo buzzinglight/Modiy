@@ -47,18 +47,18 @@
 					<!--<div id='pulse' class='yellow'></div>-->
 				</div>
 				<h1><img draggable='false' src='img/logo_red.png' height='150'></h1>
-				<h2 class='noTopMargin'>Wiring diagram</h2>
 				<div id='modulesWaiting'>Waiting for VCV-Rack…</div>
 			</div>
 			<div id='modules'></div>
-			<div class='printmargins'>
-				<h2 class='doPrint'>Legend</h2>
+			<div id='infos' class='printmargins'>
+				<h2 class='noTopMargin doPrint'>Legend</h2>
 				<div id='legend'></div>
 				<div class='dontPrint'>
 					<div class='button' id='update'></div>
-					<div class='button' id='showPins'></div>
+					<div class='button' id='showPins'></div><br/>
 					<div class='button' id='print1'>Print mounting</div>
-					<div class='button' id='print2'>Print panels</div>
+					<div class='button' id='print2'>Print panels</div><br/>
+					<label for='printScale'>Printing scale to match desired dimensions:&nbsp;</label><input type='number' value='128' min='0' step='1' max='500' id='printScale'/>%&nbsp;&nbsp;&nbsp;<div class='button' id='print3'>Help me!</div>
 				</div>
 				<h2>Part list <span class='price'></span></h2>
 				<div class='partlist'>
@@ -116,7 +116,7 @@
 					<div class='left' ><img src='img/icn_parts_fabricate.png' height='35'></div>
 					<div class='right' id='nbfabricate'>Fabrication<br/><span class='price'>To estimate</span></div>
 				</div>
-			
+
 				<div class='dontPrint'>
 					<h2>Wood cut</h2>
 					<div id='panels'><div class='ruler'></div><div class='bunch'><div class='rotation'><div class='woodPanel'></div></div></div></div>
@@ -124,11 +124,17 @@
 					<h2>Arduino</h2>
 					<a href='/arduino/Modiy/Modiy.ino' target='blank'><div class='button' id='download'>Download source code</div></a>
 
-
 					<h2>Documentation</h2>
 					<a href='https://github.com/buzzinglight/Modiy' target='blank'><div class='button' id='download'>Open GitHub webpage</div></a>
-
 				</div>
+			</div>
+		
+			<div id='findyourscaleContainer'>
+				<h2>Find the correct scale</h2>
+				<p>Find the correct scale value which match ≈128.5mm height.</p>
+				<p>If you need shorter or longer values, change the scale factor on the interface and generate this sheet again.</p>
+				<p>&nbsp;</p>
+				<div id='findyourscale'></div>
 			</div>
 		
 			<div class='dontPrint' style="opacity: 0; font-family: 'OpenSans'; font-weight: 200; line-height: 0px;">toto</div>

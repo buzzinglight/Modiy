@@ -6,52 +6,58 @@ var app = {
 		0: {
 			stroke: 	0xFFFFFF,
 			background: 0x000000,
-			html: 		"#FFFFFF"
+			html: 		"#FFFFFF",
+			borderhtml: "#000000"
 		},
 		1: {
 			stroke: 	0x4AC99F,
 			background: 0x000000,
-			html: 		"#4AC99F"
+			html: 		"#4AC99F",
+			borderhtml: "#4AC99F"
 		},
 		2: {
 			stroke: 	0xF2911B,
 			background: 0x000000,
-			html: 		"#F2911B"
+			html: 		"#F2911B",
+			borderhtml: "#F2911B"
 		},
 		audiocard: {
 			stroke: 	0xF3374D,
 			background: 0x000000,
-			html: 		"#F3374D"
+			html: 		"#F3374D",
+			borderhtml: "#F3374D"
 		}
 	},
 	baseColorsPrint: {
 		0: {
 			stroke: 	0x000000,
 			background: 0xFFFFFF,
-			html: 		"#000000"
+			html: 		"#000000",
+			borderhtml: "#000000"
 		},
 		1: {
 			stroke: 	0x4AC99F,
 			background: 0xFFFFFF,
-			html: 		"#4AC99F"
+			html: 		"#4AC99F",
+			borderhtml: "#4AC99F"
 		},
 		2: {
 			stroke: 	0xF2911B,
 			background: 0xFFFFFF,
-			html: 		"#F2911B"
+			html: 		"#F2911B",
+			borderhtml: "#F2911B"
 		},
 		audiocard: {
 			stroke: 	0xF3374D,
 			background: 0xFFFFFF,
-			html: 		"#F3374D"
+			html: 		"#F3374D",
+			borderhtml: "#F3374D"
 		}
 	}
 };
 
 //Update cache
 function updateCache(step) {
-	app.margins = mm2px(5);
-	
 	$("#update").text("Syncing…");
 	
 	if(step == "force") {
@@ -92,12 +98,32 @@ function updateCacheFinished() {
 	$("#update").text("Sync with VCV Rack");
 	$(".module").remove();
 	$("#modules, #panels .ruler, #panels .bunch .rotation .woodPanel").html("");
-	var woodHeight = mm2px(100);
+	var woodHeight = mm2px(100, 1);
 	$("#panels .bunch .rotation .woodPanel").css({ width: woodHeight });
 	$("#panels .bunch .rotation").css({ transform: "rotate(-90deg) translate(-" + woodHeight + "px,0px)" });
 	$("#panels .bunch").css({ height: woodHeight });
 	cache.refresh = "";
 	cache.force = false;
+	
+	//Size
+	app.margins = mm2px(5);
+	$.each(cache.modules, function(index, module) {
+		//Eurorack size
+		module.size.px = {
+			width:  module.size.pxSrc.width  * app.pxScale,
+			height: module.size.pxSrc.height * app.pxScale
+		}
+		module.size.mm = { 
+			width: 		px2mm(module.size.px.width),
+			height: 	px2mm(module.size.px.height)
+		};
+		module.size.eurorack = mm2rack(module.size.mm);
+	});
+	$("#findyourscale").html("");
+	for(var i = 0 ; i <= 30 ; i++) {
+		var scale = map(i, 0,30, app.pxScale-0.2,app.pxScale+0.2);
+		$("#findyourscale").append("<div style='height: " + mm2px(128.5, scale) + "px'><div style='width: " + mm2px(128.5, scale) + "px'>" + round(scale*100) + "%</div></div>");
+	}
 	
 	//Calculate electronic/hardware needs
 	calculatePrices();
@@ -192,24 +218,29 @@ function updateCacheFinished() {
 		//Canvas resize to match modules
 		module.app.renderer.resize(module.container.width + app.margins/2, module.container.height + app.margins/2);
 		$("#modulesWaiting").hide();
-		$("#modules").show();
 		
 		//Panel
 		if(module.panel) {
 			$(module.app.view.domPanels).find("img").each(function(index, dom) {
 				dom = $(dom);
-				dom.attr("src", "/?file=" + module.panel).css({
-					width: 	   module.size.px.width,
-					height:    module.size.px.height,
-					top:       app.margins,
-					left: 	   app.margins
-				});
 				dom.attr("src", "/?file=" + module.panel);
 				if(index == 0) {
+					dom.css({
+						width: 	   module.size.px.width,
+						height:    module.size.px.height,
+						top:       app.margins,
+						left: 	   app.margins
+					});
 					if(app.print != 1)
 						dom.show();
 					else
 						dom.hide();
+				}
+				else {
+					dom.css({
+						width: 	   module.size.pxSrc.width,
+						height:    module.size.pxSrc.height,
+					});
 				}
 			});
 		}
@@ -224,8 +255,8 @@ function updateCacheFinished() {
 	
 	var totalWidth = $("#panels .bunch .rotation").height();
 	$("#panels>*").css({ width: totalWidth });
-	for(var i = 0 ; i < totalWidth ; i += mm2px(25)) {
-		$("#panels .ruler").append("<div class='tip' style='left: " + i + "px;'>" + round(px2mm(i)/10) + "cm</div>");
+	for(var i = 0 ; i < totalWidth ; i += mm2px(20, 1)) {
+		$("#panels .ruler").append("<div class='tip' style='left: " + i + "px;'>" + round(px2mm(i, 1)/10) + "cm</div>");
 	}
 	
 }
@@ -322,11 +353,11 @@ function drawItem(module, item) {
 
 
 //Scale functions
-function px2mm(px) { // 3U = 3 × 44.45mm = 133.35mm = 380px in VCV // But 133.35 is theorical, 128.5 is applyed
-	return (px / 380 * 128.5) / app.pxScale;
+function px2mm(px, forcescale) { // 3U = 3 × 44.45mm = 133.35mm = 380px in VCV // But 133.35 is theorical, 128.5 is applyed
+	return (px / 380 * 128.5) / ((forcescale!=undefined)?(forcescale):(app.pxScale));
 }
-function mm2px(mm) {
-	return (mm * 380 / 128.5) * app.pxScale;
+function mm2px(mm, forcescale) {
+	return (mm * 380 / 128.5) * ((forcescale!=undefined)?(forcescale):(app.pxScale));
 }
 function mm2rack(size) {
 	return {

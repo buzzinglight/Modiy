@@ -380,10 +380,10 @@ function calculatePrices() {
 
 		//Boards legend
 		var html = "";
-		for(var i = 0 ; i < cache.partList.boards.value ; i++)
-			html += "<div class='legend'><div class='color' style='background-color: " + app.baseColors[i%3].html + "'></div><div class='name'>To Board #" + (i+1) + "</div></div>";
+		for(var i = 0 ; i < cache.partList.boards.value ; i++) 
+			html += "<div class='legend'><div class='color' style='border-color: " + app.baseColors[i%3].borderhtml + "; background-color: " + app.baseColors[i%3].html + "'></div><div class='name'>To Board #" + (i+1) + "</div></div>";
 		if(cache.partList.audioJacks)
-			html += "<div class='legend'><div class='color' style='background-color: " + app.baseColors["audiocard"].html + "'></div><div class='name'>To Audiocard</div></div>";
+			html += "<div class='legend'><div class='color' style='border-color: " + app.baseColors["audiocard"].borderhtml + "; background-color: " + app.baseColors["audiocard"].html + "'></div><div class='name'>To Audiocard</div></div>";
 		$("#legend").html(html);
 	}
 }

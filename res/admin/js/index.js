@@ -69,24 +69,47 @@ $(document).ready(function() {
 			});
 
 			//Refresh test
-			function printCommon() {
+			function printCommon(callback) {
 				app.baseColors = app.baseColorsPrint;
 				updateCacheFinished();
-				//return;
 				setTimeout(function() {
 					window.print();
+					callback();
 					app.print = 0;
 					app.baseColors = app.baseColorsScreen;
 					updateCacheFinished();
 				}, 1000);
 			}
+			$("#printScale").change(function() {
+				app.pxScale = $(this).val()/100;
+				localStorage.setItem("pxScale", $(this).val());
+				updateCacheFinished();
+			});
+			if(localStorage.getItem("pxScale") != undefined) {
+				$("#printScale").val(localStorage.getItem("pxScale"));
+				$("#printScale").trigger("change");
+			}
+			
 			$("#print1").click(function() {
 				app.print = 1;
-				printCommon();
+				printCommon(function() {
+					
+				});
 			});
 			$("#print2").click(function() {
 				app.print = 2;
-				printCommon();
+				printCommon(function() {
+					
+				});
+			});
+			$("#print3").click(function() {
+				app.print = 3;
+				$("#modules, #infos").hide();
+				$("#findyourscaleContainer").show();
+				printCommon(function() {
+					$("#modules, #infos").show();
+					$("#findyourscaleContainer").hide();
+				});
 			});
 		});
 	});
