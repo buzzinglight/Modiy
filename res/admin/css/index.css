@@ -251,4 +251,7 @@ input[type=checkbox] {
 	.module .panel {
 		mix-blend-mode:		inherit;
 	}
+	body.print2 #modules .module>canvas {
+		mix-blend-mode:			exclusion;
+	}
 }

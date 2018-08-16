@@ -184,9 +184,9 @@ var prices = {
 	wood: [
 		{
 			name:   "Wood panel",
-			source: "http://www.rougier-ple.fr/planche-de-balsa-longueur-epaisseur-3-mm-1-m.r.html",
+			source: "http://www.rougier-ple.fr/planche-de-balsa-longueur-epaisseur-4-mm-1-m.r.html",
 			prices: {
-				"1":   4 / 1000,// 100cm x 10cm = 1000cm²
+				"1":   4.55 / 1000,// 100cm x 10cm = 1000cm²
 			}
 		}
 	],

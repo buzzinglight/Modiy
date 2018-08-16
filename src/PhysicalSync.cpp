@@ -108,15 +108,15 @@ void PhysicalSync::updateCache(bool force) {
                         LEDButton       *hasLED2 = NULL;
                         LEDBezelButton  *hasLED3 = NULL;
                         try { isToggle = dynamic_cast<ToggleSwitch*>(parameter); }
-                        catch(const std::bad_cast& e) { isToggle = NULL; }
+                        catch(const std::bad_cast&) { isToggle = NULL; }
                         try { isMomentary = dynamic_cast<MomentarySwitch*>(parameter); }
-                        catch(const std::bad_cast& e) { isMomentary = NULL; }
+                        catch(const std::bad_cast&) { isMomentary = NULL; }
                         try { hasLED1 = dynamic_cast<LEDBezel*>(parameter); }
-                        catch(const std::bad_cast& e) { hasLED1 = NULL; }
+                        catch(const std::bad_cast&) { hasLED1 = NULL; }
                         try { hasLED2 = dynamic_cast<LEDButton*>(parameter); }
-                        catch(const std::bad_cast& e) { hasLED2 = NULL; }
+                        catch(const std::bad_cast&) { hasLED2 = NULL; }
                         try { hasLED3 = dynamic_cast<LEDBezelButton*>(parameter); }
-                        catch(const std::bad_cast& e) { hasLED3 = NULL; }
+                        catch(const std::bad_cast&) { hasLED3 = NULL; }
 
                         //Verdict!
                         if((isToggle) || (isMomentary)) {
@@ -163,7 +163,7 @@ void PhysicalSync::updateCache(bool force) {
                             ModuleLightWidget *ledWidget = dynamic_cast<ModuleLightWidget*>(widget);
                             if((ledWidget) && (ledWidget->visible))
                                 ledsWidget.push_back(ledWidget);
-                        } catch(const std::bad_cast& e) { }
+                        } catch(const std::bad_cast&) { }
                     }
                     //Associate LED with widgets
                     for(unsigned int ledId = 0 ; ledId < modul.widget->module->lights.size() ; ledId++) {
@@ -177,82 +177,67 @@ void PhysicalSync::updateCache(bool force) {
                 }
 
                 //Find panel path
-                if(modul.widget->panel) {
-                    Model *model = modul.widget->model;
-                    std::string panelFile;
-                    bool hasUsedCache = true, hasUsedHash = false;
-                    unsigned int hashCount = 0;
+                Model *model = modul.widget->model;
+                info("•• Looking for %s panel", model->slug.c_str());
+                for (Widget *widget : modul.widget->children) {
+                    try {
+                        SVGPanel *panel = dynamic_cast<SVGPanel*>(widget);
+                        if(panel) {
+                            info("SVGPanel found!", model->slug.c_str());
 
-                    //Tries to find panel file in cache
-                    if(panelCache.find(model->slug) != panelCache.end())
-                        panelFile = panelCache.at(model->slug);
-                    else {
-                        hasUsedCache = false;
+                            std::string panelFile;
+                            bool hasUsedCache = true, hasUsedHash = false;
+                            unsigned int hashCount = 0;
 
-                        //Tries to find with slug name
-                        panelFile = findPath(model->plugin, "res/", model->slug + ".svg");
-                        if(panelFile == "") {
-                            hasUsedHash = true;
+                            //Tries to find panel file in cache
+                            if(panelCache.find(model->slug) != panelCache.end())
+                                panelFile = panelCache.at(model->slug);
+                            else {
+                                hasUsedCache = false;
 
-                            //Tries to find by comparing SVG files
-                            for (Widget *widget : modul.widget->panel->children) {
-                                try {
-                                    SVGWidget *svgWidget = dynamic_cast<SVGWidget*>(widget);
-                                    if(svgWidget) {
-                                        std::string resPath = findPath(model->plugin, "res");
-                                        if(resPath != "") {
-                                            std::string panelKey = model->slug;
-                                            std::string panelHash = hash(panelKey, svgWidget->svg);
+                                //Tries to find with slug name
+                                info("Doest %s exists?", ("res/", model->slug + ".svg").c_str());
+                                panelFile = findPath(model->plugin, "res/", model->slug + ".svg");
+                                if(panelFile == "") {
+                                    hasUsedHash = true;
 
-                                            //Browse files
-                                            DIR *dir;
-                                            struct dirent *ent;
-                                            if ((dir = opendir(resPath.c_str())) != NULL) {
-                                                panelFile = "";
-                                                while ((ent = readdir(dir)) != NULL) {
-                                                    if(panelFile == "") {
-                                                        panelFile = ent->d_name;
-                                                        std::size_t found = panelFile.rfind(".svg");
-                                                        if (found != std::string::npos) {
-                                                            bool inCache = false;
-                                                            panelFile = resPath + "/" + panelFile;
-                                                            std::string testHash = hash(panelFile, panelFile, &inCache);
-                                                            if(inCache)
-                                                                hashCount++;
-                                                            if(testHash != panelHash)
-                                                                panelFile = "";
-                                                        }
-                                                        else
-                                                            panelFile = "";
-                                                    }
+                                    //Tries to find by comparing SVG files
+                                    for (Widget *widget : panel->children) {
+                                        try {
+                                            SVGWidget *svgWidget = dynamic_cast<SVGWidget*>(widget);
+                                            if(svgWidget) {
+                                                std::string resPath = findPath(model->plugin, "res");
+                                                if(resPath != "") {
+                                                    std::string panelKey = model->slug;
+                                                    std::string panelHash = hash(panelKey, svgWidget->svg);
+
+                                                    //Browse files
+                                                    panelFile = findPanelInto(resPath, panelFile, panelHash, &hashCount);
                                                 }
-                                                closedir(dir);
+                                                else
+                                                    info("[%s] Directory not found", model->slug.c_str());
                                             }
-                                            else
-                                                info("[%s] Directory not found: %s", model->slug.c_str(), resPath.c_str());
-                                        }
-                                        else
-                                            info("[%s] Directory not found", model->slug.c_str());
+                                        } catch(const std::bad_cast&) { }
                                     }
-                                } catch(const std::bad_cast& e) { }
+                                }
+
+                                //Insert into cache
+                                if(panelFile != "")
+                                    panelCache.insert(std::make_pair(model->slug, panelFile));
                             }
+
+                            //Panel file OK
+                            if(panelFile != "") {
+                                if(!hasUsedCache)
+                                    info("Module %s panel is located in %s (%d | %d | %d)", model->slug.c_str(), panelFile.c_str(), hasUsedCache, hasUsedHash, hashCount);
+                            }
+                            else
+                                warn("%s\tnot found (%d | %d | %d)", model->slug.c_str(), hasUsedCache, hasUsedHash, hashCount);
+
+                            //Store info
+                            modul.panel = panelFile;
                         }
-
-                        //Insert into cache
-                        if(panelFile != "")
-                            panelCache.insert(std::make_pair(model->slug, panelFile));
-                    }
-
-                    //Panel file OK
-                    if(panelFile != "") {
-                        if(!hasUsedCache)
-                            info("Module %s panel is located in %s (%d | %d | %d)", model->slug.c_str(), panelFile.c_str(), hasUsedCache, hasUsedHash, hashCount);
-                    }
-                    else
-                        warn("%s\tnot found (%d | %d | %d)", model->slug.c_str(), hasUsedCache, hasUsedHash, hashCount);
-
-                    //Store info
-                    modul.panel = panelFile;
+                    } catch(const std::bad_cast&) { }
                 }
 
                 //Name of module
@@ -1167,12 +1152,42 @@ std::string PhysicalSync::findPath(Plugin *plugin, std::string filepath, std::st
     }
 
     //Return real path
-    if(path != "") {
-        char pathBuffer[PATH_MAX + 1];
-        if(realpath(path.c_str(), pathBuffer))
-            path = pathBuffer;
+    return absPath(path);
+}
+
+std::string PhysicalSync::findPanelInto(const std::string &path, std::string panelFile, const std::string &panelHash, unsigned int *hashCount) {
+    info("Looking for panel files into %s", path.c_str());
+
+    //Browse files
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir(path.c_str())) != NULL) {
+        panelFile = "";
+        while ((ent = readdir(dir)) != NULL) {
+            std::string fileOrDir = ent->d_name;
+            if(panelFile == "") {
+                panelFile = fileOrDir;
+                std::size_t found = panelFile.rfind(".svg");
+                if (found != std::string::npos) {
+                    bool inCache = false;
+                    panelFile = path + "/" + panelFile;
+                    std::string testHash = hash(panelFile, panelFile, &inCache);
+                    if(inCache)
+                        (*hashCount)++;
+                    if(testHash != panelHash)
+                        panelFile = "";
+                }
+                else {
+                    panelFile = "";
+                    if((fileOrDir != ".") && (fileOrDir != ".."))
+                        panelFile = findPanelInto(path + "/" + fileOrDir, panelFile, panelHash, hashCount);
+                }
+            }
+        }
+        closedir(dir);
     }
-    return path;
+
+    return panelFile;
 }
 
 
@@ -1180,7 +1195,7 @@ std::string PhysicalSync::findPath(Plugin *plugin, std::string filepath, std::st
 
 //Module widget
 PhysicalSyncWidget::PhysicalSyncWidget(PhysicalSync *physicalSync) : ModuleWidget(physicalSync) {
-    setPanel(SVG::load(assetPlugin(plugin, "res/ModiySync.svg")));
+    setPanel(SVG::load(assetPlugin(plugin, "res/panels/ModiySync.svg")));
     physicalSync->widget = this;
     SVGWidget *component;
     float y = 44;

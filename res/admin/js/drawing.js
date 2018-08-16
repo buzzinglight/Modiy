@@ -156,12 +156,14 @@ function updateCacheFinished() {
 		module.container.mouting = new PIXI.Container();
 		module.container.addChild(module.container.infos);
 		module.container.addChild(module.container.mouting);
+		
+		var color = (app.print!=2)?(app.baseColors[module.wiring.board%3].stroke):(app.baseColorsScreen[0].stroke);
 	
 		//White rectangle for module
 		var traitCoupe = app.margins * 0.75;
 		module.container.drawing = new PIXI.Graphics();
 		module.container.drawing.alpha = module.container.drawing.alphaBefore = 0.5;
-		module.container.drawing.lineStyle(1, app.baseColors[module.wiring.board%3].stroke);
+		module.container.drawing.lineStyle(1, color);
 		module.container.drawing.moveTo(-traitCoupe, 0); module.container.drawing.lineTo(module.size.px.width+traitCoupe, 0);
 		module.container.drawing.moveTo(-traitCoupe, module.size.px.height); module.container.drawing.lineTo(module.size.px.width+traitCoupe, module.size.px.height);
 		module.container.drawing.moveTo(0, -traitCoupe); module.container.drawing.lineTo(0, module.size.px.height+traitCoupe);
@@ -169,8 +171,8 @@ function updateCacheFinished() {
 		module.container.infos.addChild(module.container.drawing);
 
 		//Text on buttons
-		module.container.drawingText  = new PIXI.Text(module.nameInRack, {fontFamily : "revilo san", fontSize: 10 * app.pxScale, fill : app.baseColors[module.wiring.board%3].stroke});
-		module.container.drawingText2 = new PIXI.Text(round(module.size.eurorack.width,1) + "HP / " + round(module.size.eurorack.height,1) + "U" + ((module.price.total)?(" — " + round(module.price.total) + "€"):("")) + "\n" + round(module.size.mm.width,1) + " × " + round(module.size.mm.height,1) + " mm", {fontFamily : "revilo san", fontSize: 9 * app.pxScale, fill : app.baseColors[module.wiring.board%3].stroke});
+		module.container.drawingText  = new PIXI.Text(module.nameInRack, {fontFamily : "revilo san", fontSize: 10 * app.pxScale, fill : color});
+		module.container.drawingText2 = new PIXI.Text(round(module.size.eurorack.width,1) + "HP / " + round(module.size.eurorack.height,1) + "U" + ((module.price.total)?(" — " + round(module.price.total) + "€"):("")) + "\n" + round(module.size.mm.width,1) + " × " + round(module.size.mm.height,1) + " mm", {fontFamily : "revilo san", fontSize: 9 * app.pxScale, fill : color});
 		module.container.drawingText.rotation = module.container.drawingText2.rotation = -PI/2;
 		module.container.drawingText .position.x = module.size.px.width  + traitCoupe/4;
 		module.container.drawingText .position.y = module.size.px.height - traitCoupe/2;
@@ -244,10 +246,12 @@ function updateCacheFinished() {
 				}
 			});
 		}
+		/*
 		if(app.print != 2)
 			module.container.mouting.visible = true;
 		else
 			module.container.mouting.visible = false;
+		*/
 		
 		module.app.view.domModule.css({width: module.app.renderer.width / module.app.renderer.resolution, height: module.app.renderer.height / module.app.renderer.resolution});;
 		$(module.app.view).css({width: module.app.view.domModule.width, height: module.app.view.domModule.height()});
@@ -280,74 +284,83 @@ function drawItem(module, item) {
 				item.container.position.x += 5;
 		}
 	
+		//Visual icon + color + offsets
 		var palette = app.baseColors[item.wiring.board%3];
 		if(palette == undefined)
 			palette = app.baseColors[item.wiring.board];
+		var color = palette.stroke;
 	
 		//Items to draw
-		var itemTypeSimplified = item.type.split("_")[0];
-		item.container.drawing = PIXI.Sprite.from(cache.resources[item.type].texture);
-		item.container.drawing.width = item.container.drawing.height = mm2px(prices[itemTypeSimplified][0].size.width) + mm2px(prices[itemTypeSimplified][0].size.height);
-	
-		//Visual icon + color + offsets
-		var color = palette.stroke;
-		var textColor = ((item.type == "potentiometers") || (item.type == "switchesT") || (item.type == "switchesM") || (item.type.indexOf("output") >= 0))?(palette.stroke):(palette.background);
-		var textOffset = {x: 0, y: (item.isToggle)?(20):(0)}, textSize = 18;
+		if(app.print != 2) {
+			var itemTypeSimplified = item.type.split("_")[0];
+			item.container.drawing = PIXI.Sprite.from(cache.resources[item.type].texture);
+			item.container.drawing.width = item.container.drawing.height = mm2px(prices[itemTypeSimplified][0].size.width) + mm2px(prices[itemTypeSimplified][0].size.height);
+			item.container.drawing.tint = color;
+		}
+		else {
+			item.container.drawing = PIXI.Sprite.from(cache.resources["hole"].texture);
+			item.container.drawing.width = item.container.drawing.height = mm2px(2);
+		}
 	
 		//Draw stuff
-		item.container.drawing.tint = color;
 		item.container.drawing.position.x = -item.container.drawing.width /2;
 		item.container.drawing.position.y = -item.container.drawing.height/2;
 		item.container.addChild(item.container.drawing);
 		item.container.drawing.item = item;
 		
-		//Occupation
-		item.container.space = new PIXI.Graphics();
-		item.container.space.alpha = item.container.space.alphaBefore = 0.33;
-		item.container.space.lineStyle(1, color);
-		item.container.space.drawRect(-mm2px(prices[itemTypeSimplified][0].size.width), -mm2px(prices[itemTypeSimplified][0].size.height), mm2px(prices[itemTypeSimplified][0].size.width)*2, mm2px(prices[itemTypeSimplified][0].size.height)*2);
-		item.container.addChild(item.container.space);
-	
-		//IDs
-		var mainID, secondId
-		if(app.showPins) {
-			mainID   = item.wiring.pin;
-			secondId = (item.wiring.board == "audiocard")?("Audio " + item.id):("#" + item.id + " (" + (item.wiring.board+1) + ")")
-		}
-		else {
-			mainID   = item.id;
-			secondId = (item.wiring.board == "audiocard")?("Audio " + item.wiring.pin):(item.wiring.pin + " (" + (item.wiring.board+1) + ")");
-		}
-	
-		//Add main ID
-		item.container.drawingText = new PIXI.Text(mainID, {fontFamily : "OpenSans", fontWeight: 500, fill : textColor, fontSize: textSize * app.pxScale});
-		item.container.drawingText.position.x = -item.container.drawingText.width/2 + textOffset.x;
-		item.container.drawingText.position.y = textOffset.y - item.container.drawingText.height/2 + 1;
-		item.container.addChild(item.container.drawingText);
+		//Not printing panels
+		if(app.print != 2) {
+			var textColor = ((item.type == "potentiometers") || (item.type == "switchesT") || (item.type == "switchesM") || (item.type.indexOf("output") >= 0))?(palette.stroke):(palette.background);
+			var textOffset = {x: 0, y: (item.isToggle)?(20):(0)}, textSize = 18;
+			
+			//Occupation
+			item.container.space = new PIXI.Graphics();
+			item.container.space.alpha = item.container.space.alphaBefore = 0.33;
+			item.container.space.lineStyle(1, color);
+			item.container.space.drawRect(-mm2px(prices[itemTypeSimplified][0].size.width), -mm2px(prices[itemTypeSimplified][0].size.height), mm2px(prices[itemTypeSimplified][0].size.width)*2, mm2px(prices[itemTypeSimplified][0].size.height)*2);
+			item.container.addChild(item.container.space);
 
-		//Events
-		item.container.scale.x = item.container.scale.y = 0.5;
-		cache.items.push(item.container);
-		item.container.drawing.interactive = true;
-		item.container.drawing.buttonMode = true;
-		item.container.drawing.on('pointerdown', function() {
-			var clickedItem = this.item.container;
-			$.each(cache.items, function(index, item) {
-				if(item != clickedItem)
-					item.alpha = 0.1;
-				else
-					item.scale.x = item.scale.y = 1;
+			//IDs
+			var mainID, secondId
+			if(app.showPins) {
+				mainID   = item.wiring.pin;
+				secondId = (item.wiring.board == "audiocard")?("Audio " + item.id):("#" + item.id + " (" + (item.wiring.board+1) + ")")
+			}
+			else {
+				mainID   = item.id;
+				secondId = (item.wiring.board == "audiocard")?("Audio " + item.wiring.pin):(item.wiring.pin + " (" + (item.wiring.board+1) + ")");
+			}
+	
+			//Add main ID
+			item.container.drawingText = new PIXI.Text(mainID, {fontFamily : "OpenSans", fontWeight: 500, fill : textColor, fontSize: textSize * app.pxScale});
+			item.container.drawingText.position.x = -item.container.drawingText.width/2 + textOffset.x;
+			item.container.drawingText.position.y = textOffset.y - item.container.drawingText.height/2 + 1;
+			item.container.addChild(item.container.drawingText);
+
+			//Events
+			item.container.scale.x = item.container.scale.y = 0.5;
+			cache.items.push(item.container);
+			item.container.drawing.interactive = true;
+			item.container.drawing.buttonMode = true;
+			item.container.drawing.on('pointerdown', function() {
+				var clickedItem = this.item.container;
+				$.each(cache.items, function(index, item) {
+					if(item != clickedItem)
+						item.alpha = 0.1;
+					else
+						item.scale.x = item.scale.y = 1;
+				});
 			});
-		});
-		item.container.drawing.on('pointerup', function() {
-			$.each(cache.items, function(index, item) {
-				if(item.alphaBefore != undefined)
-					item.alpha = item.alphaBefore;
-				else
-					item.alpha = 1;
-				item.scale.x = item.scale.y = 0.5;
+			item.container.drawing.on('pointerup', function() {
+				$.each(cache.items, function(index, item) {
+					if(item.alphaBefore != undefined)
+						item.alpha = item.alphaBefore;
+					else
+						item.alpha = 1;
+					item.scale.x = item.scale.y = 0.5;
+				});
 			});
-		});
+		}
 	}
 }
 

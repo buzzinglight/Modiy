@@ -6,7 +6,8 @@ $(document).ready(function() {
 	
 	//Cache of images
 	var loader = PIXI.loaders.shared;
-	loader.add('jacks_audio_input',  	'img/icn_jack_audio_input.png')
+	loader.add('hole',  				'img/icn_led.png')
+		  .add('jacks_audio_input',  	'img/icn_jack_audio_input.png')
 		  .add('jacks_audio_output', 	'img/icn_jack_audio_output.png')
 		  .add('jacks_input', 			'img/icn_jack_input.png')
 		  .add('jacks_output', 			'img/icn_jack_output.png')
@@ -70,11 +71,13 @@ $(document).ready(function() {
 
 			//Refresh test
 			function printCommon(callback) {
+				$("body").addClass("print" + app.print);
 				app.baseColors = app.baseColorsPrint;
 				updateCacheFinished();
 				setTimeout(function() {
 					window.print();
 					callback();
+					$("body").removeClass("print" + app.print);
 					app.print = 0;
 					app.baseColors = app.baseColorsScreen;
 					updateCacheFinished();

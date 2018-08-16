@@ -230,6 +230,18 @@ public:
     const std::string hash(const std::string &key, const std::string &filename, bool *inCache = 0);
     const std::string hash(const std::string &key, std::shared_ptr<SVG> svgPtr, bool *inCache = 0);
     static std::string findPath(Plugin *plugin, std::string filepath, std::string filename = "");
+
+public:
+    std::string findPanelInto(const std::string &path, std::string panelFile, const std::string &panelHash, unsigned int *hashCount);
+    static inline std::string absPath(const std::string &path) {
+        std::string retour;
+        if(path != "") {
+            char pathBuffer[PATH_MAX + 1];
+            if(realpath(path.c_str(), pathBuffer))
+                retour = pathBuffer;
+        }
+        return retour;
+    }
 };
 
 
