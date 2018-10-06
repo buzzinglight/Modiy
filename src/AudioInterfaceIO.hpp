@@ -34,7 +34,7 @@ public:
     bool active = false;
 
 public:
-    ~AudioInterfaceIO();
+    ~AudioInterfaceIO() override;
     void processStream(const float *input, float *output, int frames) override;
     void onCloseStream() override;
     void onChannelsChange() override;
