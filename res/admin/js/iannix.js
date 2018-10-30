@@ -23,7 +23,6 @@
 
 
 //Prototypes for Strings
-//Prototypes for Strings
 String.prototype.trim = function()
 	{ return (this.replace(/^[\s\xA0]+/, "").replace(/[\s\xA0]+$/, "")) }
 String.prototype.startsWith = function(str) 
@@ -48,7 +47,6 @@ Array.prototype.clean = function(deleteValue) {
   }
   return this;
 };
-
 
 
 //Constants
@@ -137,6 +135,9 @@ function rangeMid(value, low, mid, high) {
 	else
 		return (value - .5) * 2 * (high - mid) + mid;
 }
-function map(value, low1, high1, low2, high2) {
-	return range(norm(value, low1, high1), low2, high2);
+function map(value, low1, high1, low2, high2, power) {
+	if(power == undefined)
+		return range(norm(value, low1, high1), low2, high2);
+	else
+		return ((value-low1)/(high1-low1) == 0) ? low2 : (((value-low1)/(high1-low1)) > 0) ? (low2 + (high2-low2) * pow((value-low1)/(high1-low1), power)) : ( low2 + (high2-low2) * -(pow(((-value+low1)/(high1-low1)), power)));
 }
