@@ -22,18 +22,29 @@
 #endif
 
 //Classes needed for module caching
-struct Potentiometer {
+struct Modul;
+struct PhysicalSyncItem {
+public:
+    std::string name;
+    inline bool isIgnored() const;
+};
+
+struct Potentiometer : PhysicalSyncItem {
+public:
     ParamWidget *widget;
 };
-struct Switch {
+struct Switch : PhysicalSyncItem {
+public:
     bool isToggle = false, hasLED = false;
     ParamWidget *widget;
 };
-struct LED {
+struct LED : PhysicalSyncItem {
+public:
     Light light;
     MultiLightWidget *widget = NULL;
 };
-struct Jack {
+struct Jack : PhysicalSyncItem {
+public:
     Port *port = NULL;
 };
 struct JackInput : Jack {
@@ -48,24 +59,21 @@ struct JackWire {
     int outputModuleId = -1;
     static std::vector<JackWire> wires;
 };
-struct Modul {
+struct Modul : PhysicalSyncItem  {
 public:
-    static std::vector<std::string> modulesIgnoredStr;
+    static std::vector<std::string> ignoredStr;
     static std::vector<Modul> modules, modulesWithIgnored;
     static json_t* toJson();
     static void fromJson(json_t *rootJ);
 
 public:
-    inline bool isIgnored() const { return (std::find(Modul::modulesIgnoredStr.begin(), Modul::modulesIgnoredStr.end(), name) != Modul::modulesIgnoredStr.end()); }
-
-public:
     ModuleWidget *widget = NULL;
-    std::vector<LED> leds;
-    std::vector<Potentiometer> potentiometers;
-    std::vector<Switch> switches;
-    std::vector<JackInput> inputs;
-    std::vector<JackOutput> outputs;
-    std::string name, panel;
+    std::vector<LED> leds, ledsWithIgnored;
+    std::vector<Potentiometer> potentiometers, potentiometersWithIgnored;
+    std::vector<Switch> switches, switchesWithIgnored;
+    std::vector<JackInput> inputs, inputsWithIgnored;
+    std::vector<JackOutput> outputs, outputsWithIgnored;
+    std::string panel;
     std::string tmpName;
     int moduleId = -1;
 };
@@ -90,9 +98,16 @@ struct AudioPresetMenu : MenuItem {
     int nbChannels;
     void onAction(EventAction &e) override;
 };
-struct IgnoreModuleMenu : MenuItem {
+struct IgnoreMenu {
     PhysicalSync *physicalSync;
-    std::string moduleName;
+    std::string ignoreId;
+    bool onActionBase();
+};
+struct IgnoreModuleMenu : MenuItem, IgnoreMenu {
+    void onAction(EventAction &e) override;
+};
+struct IgnoreModuleItem : MenuItem, IgnoreMenu {
+    //PhysicalSyncItem item;
     void onAction(EventAction &e) override;
 };
 

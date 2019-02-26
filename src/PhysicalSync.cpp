@@ -1,11 +1,10 @@
 #include "PhysicalSync.hpp"
 
 //Static variables
-std::vector<std::string> Modul::modulesIgnoredStr;
 std::vector<JackWire> JackWire::wires;
 std::vector<Modul> Modul::modules;
 std::vector<Modul> Modul::modulesWithIgnored;
-
+std::vector<std::string> Modul::ignoredStr;
 
 //Module initialisation
 PhysicalSync::PhysicalSync() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {
@@ -51,8 +50,8 @@ json_t* Modul::toJson() {
     json_t *rootJ = json_object();
     // ignored
     json_t *ignoresJ = json_array();
-    for (unsigned int i = 0 ; i < modulesIgnoredStr.size() ; i++) {
-        json_t *ignoreJ = json_string(modulesIgnoredStr.at(i).c_str());
+    for (unsigned int i = 0 ; i < ignoredStr.size() ; i++) {
+        json_t *ignoreJ = json_string(ignoredStr.at(i).c_str());
         json_array_append_new(ignoresJ, ignoreJ);
     }
     json_object_set_new(rootJ, "ignore", ignoresJ);
@@ -62,11 +61,11 @@ void Modul::fromJson(json_t *rootJ) {
     // ignored
     json_t *ignoresJ = json_object_get(rootJ, "ignore");
     if (ignoresJ) {
-        modulesIgnoredStr.clear();
+        ignoredStr.clear();
         for (unsigned int i = 0 ; i < json_array_size(ignoresJ) ; i++) {
             json_t *ignoreJ = json_array_get(ignoresJ, i);
             if (ignoreJ)
-                modulesIgnoredStr.push_back(json_string_value(ignoreJ));
+                ignoredStr.push_back(json_string_value(ignoreJ));
         }
     }
 }
@@ -78,12 +77,19 @@ void PhysicalSync::onReset() {
 }
 
 
+//Item ignored
+bool PhysicalSyncItem::isIgnored() const {
+    bool ret = (std::find(Modul::ignoredStr.begin(), Modul::ignoredStr.end(), name) != Modul::ignoredStr.end());
+    if(ret)
+        info("Ignored %s : %d", name.c_str(), ret);
+    return ret;
+}
 
 
 
 //Update modules, jacks, potentiometers, switches, LEDs… cache
 void PhysicalSync::updateCache(bool force) {
-    bool debug = false;
+    bool debug = true;
     if((updateCacheLastTime > 0.1) || (force)) {
         updateCacheCounter++;
         updateCacheLastTime = 0;
@@ -121,15 +127,19 @@ void PhysicalSync::updateCache(bool force) {
                         //Verdict!
                         if((isToggle) || (isMomentary)) {
                             Switch button;
+                            button.name = "Button #" + std::to_string(parameterId);
                             button.isToggle = isToggle;
                             button.hasLED = hasLED1 || hasLED2 || hasLED3;
                             button.widget = parameter;
-                            modul.switches.push_back(button);
+                            //Add to arrays
+                            modul.switchesWithIgnored.push_back(button);
                         }
                         else {
                             Potentiometer potentiometer;
+                            potentiometer.name = "Parameter #" + std::to_string(parameterId);
                             potentiometer.widget = parameter;
-                            modul.potentiometers.push_back(potentiometer);
+                            //Add to arrays
+                            modul.potentiometersWithIgnored.push_back(potentiometer);
                         }
                     }
                 }
@@ -139,18 +149,22 @@ void PhysicalSync::updateCache(bool force) {
                     Port *input = modul.widget->inputs.at(inputId);
                     if(input->visible) {
                         JackInput inputWithId;
-                        inputWithId.input  = modul.widget->module->inputs.at(inputId);
+                        inputWithId.name = "Input #" + std::to_string(inputId);
+                        inputWithId.input = modul.widget->module->inputs.at(inputId);
                         inputWithId.port = input;
-                        modul.inputs.push_back(inputWithId);
+                        //Add to arrays
+                        modul.inputsWithIgnored.push_back(inputWithId);
                     }
                 }
                 for(unsigned int outputId = 0 ; outputId < modul.widget->outputs.size() ; outputId++) {
                     Port *output = modul.widget->outputs.at(outputId);
                     if(output->visible) {
                         JackOutput outputWithId;
+                        outputWithId.name = "Output #" + std::to_string(outputId);
                         outputWithId.output = modul.widget->module->outputs.at(outputId);
                         outputWithId.port = output;
-                        modul.outputs.push_back(outputWithId);
+                        //Add to arrays
+                        modul.outputsWithIgnored.push_back(outputWithId);
                     }
                 }
 
@@ -169,9 +183,11 @@ void PhysicalSync::updateCache(bool force) {
                     for(unsigned int ledId = 0 ; ledId < modul.widget->module->lights.size() ; ledId++) {
                         if(ledId < ledsWidget.size()) {
                             LED led;
+                            led.name = "LED #" + std::to_string(ledId);
                             led.light  = modul.widget->module->lights.at(ledId);
                             led.widget = ledsWidget.at(ledId);
-                            modul.leds.push_back(led);
+                            //Add to arrays
+                            modul.ledsWithIgnored.push_back(led);
                         }
                     }
                 }
@@ -196,7 +212,7 @@ void PhysicalSync::updateCache(bool force) {
                                 hasUsedCache = false;
 
                                 //Tries to find with slug name
-                                info("Doest %s exists?", ("res/", model->slug + ".svg").c_str());
+                                info("Does %s exists?", ("res/", model->slug + ".svg").c_str());
                                 panelFile = findPath(model->plugin, "res/", model->slug + ".svg");
                                 if(panelFile == "") {
                                     hasUsedHash = true;
@@ -266,10 +282,40 @@ void PhysicalSync::updateCache(bool force) {
                 Modul::modules[moduleId].name = Modul::modules.at(moduleId).tmpName;
             else
                 Modul::modules[moduleId].name = Modul::modules.at(moduleId).tmpName + " #" + std::to_string(moduleIndex);
-            /*
-            if((module.slug != module.name) && (module.slug != "ModiySync"))
-                introText = module.name + " (" + module.slug + ")";
-            */
+
+            //Conform parameters name
+            std::vector<LED> leds, ledsWithIgnored;
+            std::vector<Potentiometer> potentiometers, potentiometersWithIgnored;
+            std::vector<Switch> switches, switchesWithIgnored;
+            std::vector<JackInput> inputs, inputsWithIgnored;
+            std::vector<JackOutput> outputs, outputsWithIgnored;
+
+            //Conform name and stores non ignored items
+            for(unsigned int inputId = 0 ; inputId < Modul::modules[moduleId].inputsWithIgnored.size() ; inputId++) {
+                Modul::modules[moduleId].inputsWithIgnored.at(inputId).name = Modul::modules[moduleId].name + " " + Modul::modules[moduleId].inputsWithIgnored.at(inputId).name;
+                if(!Modul::modules[moduleId].inputsWithIgnored.at(inputId).isIgnored())
+                    Modul::modules[moduleId].inputs.push_back(Modul::modules[moduleId].inputsWithIgnored.at(inputId));
+            }
+            for(unsigned int outputId = 0 ; outputId < Modul::modules[moduleId].outputsWithIgnored.size() ; outputId++) {
+                Modul::modules[moduleId].outputsWithIgnored.at(outputId).name = Modul::modules[moduleId].name + " " + Modul::modules[moduleId].outputsWithIgnored.at(outputId).name;
+                if(!Modul::modules[moduleId].outputsWithIgnored.at(outputId).isIgnored())
+                    Modul::modules[moduleId].outputs.push_back(Modul::modules[moduleId].outputsWithIgnored.at(outputId));
+            }
+            for(unsigned int potentiometerId = 0 ; potentiometerId < Modul::modules[moduleId].potentiometersWithIgnored.size() ; potentiometerId++) {
+                Modul::modules[moduleId].potentiometersWithIgnored.at(potentiometerId).name = Modul::modules[moduleId].name + " " + Modul::modules[moduleId].potentiometersWithIgnored.at(potentiometerId).name;
+                if(!Modul::modules[moduleId].potentiometersWithIgnored.at(potentiometerId).isIgnored())
+                    Modul::modules[moduleId].potentiometers.push_back(Modul::modules[moduleId].potentiometersWithIgnored.at(potentiometerId));
+            }
+            for(unsigned int switchId = 0 ; switchId < Modul::modules[moduleId].switchesWithIgnored.size() ; switchId++) {
+                Modul::modules[moduleId].switchesWithIgnored.at(switchId).name = Modul::modules[moduleId].name + " " + Modul::modules[moduleId].switchesWithIgnored.at(switchId).name;
+                if(!Modul::modules[moduleId].switchesWithIgnored.at(switchId).isIgnored())
+                    Modul::modules[moduleId].switches.push_back(Modul::modules[moduleId].switchesWithIgnored.at(switchId));
+            }
+            for(unsigned int ledId = 0 ; ledId < Modul::modules[moduleId].ledsWithIgnored.size() ; ledId++) {
+                Modul::modules[moduleId].ledsWithIgnored.at(ledId).name = Modul::modules[moduleId].name + " " + Modul::modules[moduleId].ledsWithIgnored.at(ledId).name;
+                if(!Modul::modules[moduleId].ledsWithIgnored.at(ledId).isIgnored())
+                    Modul::modules[moduleId].leds.push_back(Modul::modules[moduleId].ledsWithIgnored.at(ledId));
+            }
 
             //Check if not ignored
             if(Modul::modules.at(moduleId).isIgnored())
@@ -307,20 +353,32 @@ void PhysicalSync::updateCache(bool force) {
             Model  *model  = widget->model;
             if((module) && (model)) {
                 if(debug) {
-                    info("Module %d : %s %s @ (%f %f) (I/O/P/S/L : %d %d %d %d %d)", moduleId, model->slug.c_str(), model->name.c_str(), widget->box.pos.x, widget->box.pos.y, modul.inputs.size(), modul.outputs.size(), modul.potentiometers.size(), modul.switches.size(), modul.leds.size());
+                    info("Module %d : %s (%s) @ (%f %f) (I/O/P/S/L : %d %d %d %d %d)", moduleId, model->slug.c_str(), model->name.c_str(), widget->box.pos.x, widget->box.pos.y, modul.inputs.size(), modul.outputs.size(), modul.potentiometers.size(), modul.switches.size(), modul.leds.size());
+                    info("\tInputs");
                     for(unsigned int inputId = 0 ; inputId < modul.inputs.size() ; inputId++)
-                        info("Input %d : %d", inputId, modul.inputs.at(inputId).input.active);
+                        info("\t\tInput %d (%s) : %d", inputId, modul.inputs.at(inputId).name.c_str(), modul.inputs.at(inputId).input.active);
+                    info("\tOutputs");
                     for(unsigned int outputId = 0 ; outputId < modul.outputs.size() ; outputId++)
-                        info("Output %d : %d", outputId, modul.outputs.at(outputId).output.active);
+                        info("\t\tOutput %d (%s) : %d", outputId, modul.outputs.at(outputId).name.c_str(), modul.outputs.at(outputId).output.active);
+                    info("\tPotentiometers");
                     for(unsigned int potentiometerId = 0 ; potentiometerId < modul.potentiometers.size() ; potentiometerId++)
-                        info("Potentiometer %d : %f", potentiometerId, modul.potentiometers.at(potentiometerId).widget->value);
+                        info("\t\tPotentiometer %d (%s) : %f", potentiometerId, modul.potentiometers.at(potentiometerId).name.c_str(), modul.potentiometers.at(potentiometerId).widget->value);
+                    info("\tSwitchs");
                     for(unsigned int switchId = 0 ; switchId < modul.switches.size() ; switchId++)
-                        info("Switch %d : %f", switchId, modul.switches.at(switchId).widget->value);
+                        info("\t\tSwitch %d (%s) : %f", switchId, modul.switches.at(switchId).name.c_str(), modul.switches.at(switchId).widget->value);
+                    info("\tLEDs");
                     for(unsigned int ledId = 0 ; ledId < modul.leds.size() ; ledId++)
-                        info("LED %d : %f", ledId, modul.leds.at(ledId).light.value);
+                        info("\t\tLED %d (%s) : %f", ledId, modul.leds.at(ledId).name.c_str(), modul.leds.at(ledId).light.value);
                 }
             }
         }
+
+        //Show infos on wires + cache modules references
+        if(debug)
+            info("IGNORES");
+        for(unsigned int ignoreId = 0 ; ignoreId < Modul::ignoredStr.size() ; ignoreId++)
+            info("\tIGNORE %d : %s", ignoreId, Modul::ignoredStr.at(ignoreId).c_str());
+
 
         //Show infos on wires + cache modules references
         if(debug)
@@ -339,7 +397,7 @@ void PhysicalSync::updateCache(bool force) {
                 JackWire::wires[wireId].inputModuleId  = inputModule.moduleId;
                 JackWire::wires[wireId].outputModuleId = outputModule.moduleId;
                 if(debug)
-                    info("Wire %d link %d - %s %s (%d) to %d - %s %s (%d)", wireId, JackWire::wires.at(wireId).outputModuleId, outputModule.widget->model->slug.c_str(), outputModule.widget->model->name.c_str(), JackWire::wires.at(wireId).widget->wire->outputId, JackWire::wires.at(wireId).inputModuleId, inputModule.widget->model->slug.c_str(), inputModule.widget->model->name.c_str(), JackWire::wires.at(wireId).widget->wire->inputId);
+                    info("\tWire %d link %d - %s %s (%d) to %d - %s %s (%d)", wireId, JackWire::wires.at(wireId).outputModuleId, outputModule.widget->model->slug.c_str(), outputModule.name.c_str(), JackWire::wires.at(wireId).widget->wire->outputId, JackWire::wires.at(wireId).inputModuleId, inputModule.widget->model->slug.c_str(), inputModule.name.c_str(), JackWire::wires.at(wireId).widget->wire->inputId);
             }
         }
     }
@@ -1313,14 +1371,52 @@ void PhysicalSyncWidget::appendContextMenu(Menu *menu) {
     //Module ignore
     if(physicalSync->osc) {
         menu->addChild(MenuLabel::create("Modules to ignore"));
+        std::string spacer = "-     ";
 
         for(unsigned int moduleId = 0 ; moduleId < Modul::modulesWithIgnored.size() ; moduleId++) {
             const Modul module = Modul::modulesWithIgnored.at(moduleId);
 
             IgnoreModuleMenu *moduleIgnore = MenuItem::create<IgnoreModuleMenu>("Ignore " + module.name, CHECKMARK(module.isIgnored()));
             moduleIgnore->physicalSync = physicalSync;
-            moduleIgnore->moduleName = module.name;
+            moduleIgnore->ignoreId = module.name;
             menu->addChild(moduleIgnore);
+
+            for(unsigned int inputId = 0 ; inputId < module.inputsWithIgnored.size() ; inputId++) {
+                const PhysicalSyncItem item = module.inputsWithIgnored.at(inputId);
+                IgnoreModuleItem *moduleItemIgnore = MenuItem::create<IgnoreModuleItem>(spacer + "Ignore " + item.name, CHECKMARK(item.isIgnored()));
+                moduleItemIgnore->physicalSync = physicalSync;
+                moduleItemIgnore->ignoreId = item.name;
+                menu->addChild(moduleItemIgnore);
+            }
+            for(unsigned int outputId = 0 ; outputId < module.outputsWithIgnored.size() ; outputId++) {
+                const PhysicalSyncItem item = module.outputsWithIgnored.at(outputId);
+                IgnoreModuleItem *moduleItemIgnore = MenuItem::create<IgnoreModuleItem>(spacer + "Ignore " + item.name, CHECKMARK(item.isIgnored()));
+                moduleItemIgnore->physicalSync = physicalSync;
+                moduleItemIgnore->ignoreId = item.name;
+                menu->addChild(moduleItemIgnore);
+            }
+            for(unsigned int potentiometerId = 0 ; potentiometerId < module.potentiometersWithIgnored.size() ; potentiometerId++) {
+                const PhysicalSyncItem item = module.potentiometersWithIgnored.at(potentiometerId);
+                IgnoreModuleItem *moduleItemIgnore = MenuItem::create<IgnoreModuleItem>(spacer + "Ignore " + item.name, CHECKMARK(item.isIgnored()));
+                moduleItemIgnore->physicalSync = physicalSync;
+                moduleItemIgnore->ignoreId = item.name;
+                menu->addChild(moduleItemIgnore);
+            }
+            for(unsigned int switchId = 0 ; switchId < module.switchesWithIgnored.size() ; switchId++) {
+                const PhysicalSyncItem item = module.switchesWithIgnored.at(switchId);
+                IgnoreModuleItem *moduleItemIgnore = MenuItem::create<IgnoreModuleItem>(spacer + "Ignore " + item.name, CHECKMARK(item.isIgnored()));
+                moduleItemIgnore->physicalSync = physicalSync;
+                moduleItemIgnore->ignoreId = item.name;
+                menu->addChild(moduleItemIgnore);
+            }
+            for(unsigned int ledId = 0 ; ledId < module.ledsWithIgnored.size() ; ledId++) {
+                const PhysicalSyncItem item = module.ledsWithIgnored.at(ledId);
+                IgnoreModuleItem *moduleItemIgnore = MenuItem::create<IgnoreModuleItem>(spacer + "Ignore " + item.name, CHECKMARK(item.isIgnored()));
+                moduleItemIgnore->physicalSync = physicalSync;
+                moduleItemIgnore->ignoreId = item.name;
+                menu->addChild(moduleItemIgnore);
+            }
+
         }
     }
 }
@@ -1335,18 +1431,26 @@ void AudioPresetMenu::onAction(EventAction &) {
     if(physicalSync)
         physicalSync->setChannels(nbChannels);
 }
-void IgnoreModuleMenu::onAction(EventAction &) {
+bool IgnoreMenu::onActionBase() {
     //Check if alread ignored or not
-    if(std::find(Modul::modulesIgnoredStr.begin(), Modul::modulesIgnoredStr.end(), moduleName) != Modul::modulesIgnoredStr.end()) {
-        info("No more ignore %s", moduleName.c_str());
-        for(int i = Modul::modulesIgnoredStr.size()-1 ; i >= 0 ; i--)
-            if(Modul::modulesIgnoredStr.at(i) == moduleName)
-                Modul::modulesIgnoredStr.erase(Modul::modulesIgnoredStr.begin() + i);
+    if(std::find(Modul::ignoredStr.begin(), Modul::ignoredStr.end(), ignoreId) != Modul::ignoredStr.end()) {
+        info("No more ignore %s", ignoreId.c_str());
+        for(int i = Modul::ignoredStr.size()-1 ; i >= 0 ; i--)
+            if(Modul::ignoredStr.at(i) == ignoreId)
+                Modul::ignoredStr.erase(Modul::ignoredStr.begin() + i);
+        return false;
     }
     else {
-        info("Ignore %s", moduleName.c_str());
-        Modul::modulesIgnoredStr.push_back(moduleName);
+        info("Ignore %s", ignoreId.c_str());
+        Modul::ignoredStr.push_back(ignoreId);
+        return true;
     }
+}
+void IgnoreModuleMenu::onAction(EventAction &) {
+    onActionBase();
+}
+void IgnoreModuleItem::onAction(EventAction &) {
+    onActionBase();
 }
 
 
