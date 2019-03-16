@@ -41,11 +41,11 @@ public:
 struct LED : PhysicalSyncItem {
 public:
     Light light;
-    MultiLightWidget *widget = NULL;
+    MultiLightWidget *widget = nullptr;
 };
 struct Jack : PhysicalSyncItem {
 public:
-    Port *port = NULL;
+    Port *port = nullptr;
 };
 struct JackInput : Jack {
     Input input;
@@ -54,7 +54,7 @@ struct JackOutput : Jack {
     Output output;
 };
 struct JackWire {
-    WireWidget *widget = NULL;
+    WireWidget *widget = nullptr;
     int inputModuleId  = -1;
     int outputModuleId = -1;
     static std::vector<JackWire> wires;
@@ -67,7 +67,7 @@ public:
     static void fromJson(json_t *rootJ);
 
 public:
-    ModuleWidget *widget = NULL;
+    ModuleWidget *widget = nullptr;
     std::vector<LED> leds, ledsWithIgnored;
     std::vector<Potentiometer> potentiometers, potentiometersWithIgnored;
     std::vector<Switch> switches, switchesWithIgnored;
@@ -135,7 +135,7 @@ public:
 //VCV-Rack base functions
 public:
     PhysicalSync();
-    ~PhysicalSync();
+    ~PhysicalSync() override;
 
     //(De)serialization
     json_t *toJson() override;
@@ -152,11 +152,11 @@ public:
 
 public:
     //Widgets
-    MultiLightWidget *oscLEDInt = NULL, *oscLEDExt = NULL;
+    MultiLightWidget *oscLEDInt = nullptr, *oscLEDExt = nullptr;
     //Audio interface
     AudioInterfaceIO audioIO;
     //OSC manager
-    OSCManagement *osc = NULL;
+    OSCManagement *osc = nullptr;
     //Audio channels + fake plugs
     std::vector<SVGWidget*> inputComponents, outputComponents;
     ModuleWidget *widget;
@@ -242,8 +242,8 @@ public:
 private:
     std::map<std::string, std::string> hashCache, panelCache;
 public:
-    const std::string hash(const std::string &key, const std::string &filename, bool *inCache = 0);
-    const std::string hash(const std::string &key, std::shared_ptr<SVG> svgPtr, bool *inCache = 0);
+    const std::string hash(const std::string &key, const std::string &filename, bool *inCache = nullptr);
+    const std::string hash(const std::string &key, std::shared_ptr<SVG> svgPtr, bool *inCache = nullptr);
     static std::string findPath(Plugin *plugin, std::string filepath, std::string filename = "");
 
 public:
